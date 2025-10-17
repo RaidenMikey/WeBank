@@ -180,14 +180,14 @@ try {
                         </div>
                         <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                             </svg>
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Payment / Pay Bills</h4>
-                        <p class="text-gray-600 text-sm mb-4">Pay utilities, tuition, credit cards</p>
-                        <button class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
+                        <p class="text-gray-600 text-sm mb-4">Pay utilities, internet, mobile, and more</p>
+                        <a href="pay_bills.php" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium inline-block text-center">
                             Pay Bills
-                        </button>
+                        </a>
                     </div>
 
                     <!-- Transfer - Active -->
@@ -225,21 +225,22 @@ try {
                     </div>
 
                     <!-- Add Money - Active -->
-                    <div class="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6 text-center relative">
-                        <div class="absolute top-2 right-2">
-                            <span class="bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
-                        </div>
-                        <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                        </div>
-                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Deposit Money</h4>
-                        <p class="text-gray-600 text-sm mb-4">Request deposit to your account (requires admin approval)</p>
-                        <a href="deposit_request.php" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 font-medium inline-block text-center">
-                            Request Deposit
-                        </a>
-                    </div>
+        <div class="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6 text-center relative">
+            <div class="absolute top-2 right-2">
+                <span class="bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
+            </div>
+            <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+            </div>
+            <h4 class="text-lg font-semibold text-gray-800 mb-2">Deposit Money</h4>
+            <p class="text-gray-600 text-sm mb-4">Request deposit to your account (requires admin approval)</p>
+            <a href="deposit_request.php" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 font-medium inline-block text-center">
+                Request Deposit
+            </a>
+        </div>
+        
                 </div>
             </div>
         </div>

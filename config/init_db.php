@@ -48,18 +48,22 @@ try {
         CREATE TABLE IF NOT EXISTS transactions (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
-            type ENUM('deposit', 'withdrawal', 'transfer', 'credit', 'debit', 'payment') NOT NULL,
+            type ENUM('deposit', 'withdrawal', 'transfer', 'credit', 'debit', 'payment', 'bill_payment') NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
             description TEXT,
             status ENUM('pending', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
             reference_id VARCHAR(100),
+            biller_id INT NULL,
+            biller_reference VARCHAR(100),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (biller_id) REFERENCES billers(id) ON DELETE SET NULL,
             INDEX idx_user_id (user_id),
             INDEX idx_type (type),
             INDEX idx_status (status),
-            INDEX idx_created_at (created_at)
+            INDEX idx_created_at (created_at),
+            INDEX idx_biller_id (biller_id)
         )
     ");
     
@@ -101,6 +105,22 @@ try {
         )
     ");
     
+    // Create billers table
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS billers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            biller_name VARCHAR(100) NOT NULL,
+            category VARCHAR(50) NOT NULL,
+            account_number VARCHAR(50) NOT NULL,
+            description TEXT,
+            status ENUM('active', 'inactive') DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_category (category),
+            INDEX idx_status (status)
+        )
+    ");
+    
     // Create default admin account if it doesn't exist
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM admins WHERE username = 'admin'");
     $stmt->execute();
@@ -114,6 +134,34 @@ try {
         ");
         $stmt->execute(['admin', $hashedPassword, 'System', 'Administrator', 'admin@webank.com', 'super_admin']);
         echo "Default admin account created!<br>";
+    }
+    
+    // Create default billers if they don't exist
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM billers");
+    $stmt->execute();
+    $billersExist = $stmt->fetchColumn();
+    
+    if ($billersExist == 0) {
+        $defaultBillers = [
+            ['Meralco', 'Electric', '12345', 'Electric Utility'],
+            ['PLDT', 'Internet', '67890', 'Internet Provider'],
+            ['Maynilad', 'Water', '11223', 'Water Utility'],
+            ['Smart', 'Telecom', '44556', 'Mobile Postpaid'],
+            ['Globe', 'Telecom', '77889', 'Mobile Postpaid'],
+            ['Converge', 'Internet', '33445', 'Internet Provider'],
+            ['Manila Water', 'Water', '55667', 'Water Utility'],
+            ['Sky Cable', 'Cable', '88990', 'Cable TV Service']
+        ];
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO billers (biller_name, category, account_number, description) 
+            VALUES (?, ?, ?, ?)
+        ");
+        
+        foreach ($defaultBillers as $biller) {
+            $stmt->execute($biller);
+        }
+        echo "Default billers created!<br>";
     }
     
     echo "Database and tables created successfully!";
