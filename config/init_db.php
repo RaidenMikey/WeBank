@@ -64,6 +64,27 @@ try {
         )
     ");
     
+    // Create deposit_requests table
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS deposit_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            description TEXT,
+            status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+            admin_notes TEXT,
+            processed_by INT NULL,
+            processed_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL,
+            INDEX idx_user_id (user_id),
+            INDEX idx_status (status),
+            INDEX idx_created_at (created_at)
+        )
+    ");
+    
     echo "Database and tables created successfully!";
     
 } catch(PDOException $e) {

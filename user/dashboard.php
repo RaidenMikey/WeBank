@@ -234,11 +234,11 @@ try {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
                         </div>
-                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Add Money</h4>
-                        <p class="text-gray-600 text-sm mb-4">Deposit funds to your account</p>
-                        <button class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 font-medium">
-                            Add Money
-                        </button>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Deposit Money</h4>
+                        <p class="text-gray-600 text-sm mb-4">Request deposit to your account (requires admin approval)</p>
+                        <a href="deposit_request.php" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 font-medium inline-block text-center">
+                            Request Deposit
+                        </a>
                     </div>
                 </div>
             </div>
