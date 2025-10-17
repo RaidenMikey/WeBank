@@ -36,7 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, phone, password) VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute([$firstName, $lastName, $email, $phone, $hashedPassword]);
                 
-                $success = 'Account created successfully! You can now <a href="../user/login.php" class="text-blue-600 hover:underline">sign in</a>.';
+                // Get the new user's ID
+                $newUserId = $pdo->lastInsertId();
+                
+                // Create account for the new user
+                $accountNumber = 'WB' . str_pad($newUserId, 8, '0', STR_PAD_LEFT);
+                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
+                $stmt->execute([$newUserId, $accountNumber]);
+                
+                $success = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="../user/login.php" class="text-blue-600 hover:underline">sign in</a>.';
             }
         } catch(PDOException $e) {
             $error = 'Registration failed. Please try again.';

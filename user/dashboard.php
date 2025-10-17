@@ -58,7 +58,7 @@ try {
                         </button>
                         <div id="dropdownMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 hidden">
                             <div class="py-1">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
+                                <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                     </svg>
@@ -202,9 +202,9 @@ try {
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Transfer</h4>
                         <p class="text-gray-600 text-sm mb-4">Send money to other users</p>
-                        <button class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">
+                        <a href="transfer.php" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300 font-medium inline-block text-center">
                             Transfer Money
-                        </button>
+                        </a>
                     </div>
 
                     <!-- Transaction History - Active -->
