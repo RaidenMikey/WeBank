@@ -115,7 +115,7 @@ try {
                     <h1 class="text-2xl font-bold text-white">WeBank Admin</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-red-100">Welcome, <?php echo htmlspecialchars($_SESSION['admin_username']); ?>!</span>
+                    <span class="text-red-100">Welcome, <?php echo htmlspecialchars($_SESSION['admin_name'] ?? $_SESSION['admin_username']); ?>!</span>
                     <!-- Settings Dropdown -->
                     <div class="relative" id="settingsDropdown">
                         <button onclick="toggleDropdown()" class="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition duration-300 flex items-center space-x-2">

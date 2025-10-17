@@ -11,17 +11,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please fill in all fields.';
     } else {
-        // Simple admin authentication (in production, use proper admin table)
-        $admin_username = 'admin';
-        $admin_password = 'admin123'; // In production, hash this password
-        
-        if ($username === $admin_username && $password === $admin_password) {
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_username'] = $username;
-            header('Location: dashboard.php');
-            exit();
-        } else {
-            $error = 'Invalid admin credentials.';
+        try {
+            // Check admin credentials in database
+            $stmt = $pdo->prepare("
+                SELECT id, username, password, first_name, last_name, email, role, status 
+                FROM admins 
+                WHERE username = ? AND status = 'active'
+            ");
+            $stmt->execute([$username]);
+            $admin = $stmt->fetch();
+            
+            if ($admin && password_verify($password, $admin['password'])) {
+                $_SESSION['admin_logged_in'] = true;
+                $_SESSION['admin_id'] = $admin['id'];
+                $_SESSION['admin_username'] = $admin['username'];
+                $_SESSION['admin_name'] = $admin['first_name'] . ' ' . $admin['last_name'];
+                $_SESSION['admin_role'] = $admin['role'];
+                header('Location: dashboard.php');
+                exit();
+            } else {
+                $error = 'Invalid admin credentials.';
+            }
+        } catch(PDOException $e) {
+            $error = 'Login failed. Please try again.';
         }
     }
 }

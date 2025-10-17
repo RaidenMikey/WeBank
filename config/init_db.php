@@ -13,6 +13,22 @@ try {
     $pdo->exec("CREATE DATABASE IF NOT EXISTS webank");
     $pdo->exec("USE webank");
     
+    // Create admins table
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS admins (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            first_name VARCHAR(50) NOT NULL,
+            last_name VARCHAR(50) NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            role ENUM('super_admin', 'admin', 'moderator') DEFAULT 'admin',
+            status ENUM('active', 'inactive') DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    ");
+    
     // Create users table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS users (
@@ -84,6 +100,21 @@ try {
             INDEX idx_created_at (created_at)
         )
     ");
+    
+    // Create default admin account if it doesn't exist
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM admins WHERE username = 'admin'");
+    $stmt->execute();
+    $adminExists = $stmt->fetchColumn();
+    
+    if ($adminExists == 0) {
+        $hashedPassword = password_hash('admin123', PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("
+            INSERT INTO admins (username, password, first_name, last_name, email, role) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute(['admin', $hashedPassword, 'System', 'Administrator', 'admin@webank.com', 'super_admin']);
+        echo "Default admin account created!<br>";
+    }
     
     echo "Database and tables created successfully!";
     

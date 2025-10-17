@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 SET status = 'approved', admin_notes = ?, processed_by = ?, processed_at = CURRENT_TIMESTAMP 
                 WHERE id = ?
             ");
-            $stmt->execute([$admin_notes, 1, $request_id]); // Using admin ID 1 for now
+            $stmt->execute([$admin_notes, $_SESSION['admin_id'], $request_id]);
             
             // Get or create user's account
             $stmt = $pdo->prepare("SELECT id, balance FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 SET status = 'rejected', admin_notes = ?, processed_by = ?, processed_at = CURRENT_TIMESTAMP 
                 WHERE id = ?
             ");
-            $stmt->execute([$admin_notes, 1, $request_id]); // Using admin ID 1 for now
+            $stmt->execute([$admin_notes, $_SESSION['admin_id'], $request_id]);
             
             $success = "Deposit request rejected for " . $request['first_name'] . " " . $request['last_name'] . ".";
         }
@@ -149,7 +149,7 @@ try {
                     <h1 class="text-2xl font-bold text-white">WeBank Admin</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-red-100">Welcome, <?php echo htmlspecialchars($_SESSION['admin_username']); ?>!</span>
+                    <span class="text-red-100">Welcome, <?php echo htmlspecialchars($_SESSION['admin_name'] ?? $_SESSION['admin_username']); ?>!</span>
                     <!-- Settings Dropdown -->
                     <div class="relative" id="settingsDropdown">
                         <button onclick="toggleDropdown()" class="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition duration-300 flex items-center space-x-2">
