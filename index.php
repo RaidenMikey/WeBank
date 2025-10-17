@@ -42,7 +42,7 @@
                     Your trusted partner for all your banking needs. Experience secure, fast, and reliable financial services.
                 </p>
                 <div class="space-x-4">
-                    <a href="auth/signup.php" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-300 inline-block">
+                    <a href="user/signup.php" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-300 inline-block">
                         Get Started
                     </a>
                     <a href="user/login.php" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition duration-300 inline-block">

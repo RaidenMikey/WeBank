@@ -36,17 +36,17 @@ try {
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
-    <header class="bg-white shadow-md">
+    <header class="bg-blue-600 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
-                    <h1 class="text-2xl font-bold text-blue-600">WeBank</h1>
+                    <h1 class="text-2xl font-bold text-white">WeBank</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-gray-700">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</span>
+                    <span class="text-blue-100">Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?>!</span>
                     <!-- Settings Dropdown -->
                     <div class="relative" id="settingsDropdown">
-                        <button onclick="toggleDropdown()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300 flex items-center space-x-2">
+                        <button onclick="toggleDropdown()" class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition duration-300 flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -140,18 +140,18 @@ try {
                 <h3 class="text-2xl font-bold text-gray-800 mb-6">Banking Services</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- Check Balance - Active -->
-                    <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6 text-center relative">
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 text-center relative">
                         <div class="absolute top-2 right-2">
-                            <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
+                            <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
                         </div>
-                        <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Check Balance</h4>
                         <p class="text-gray-600 text-sm mb-4">View your real-time available balance</p>
-                        <a href="check_balance.php" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 font-medium inline-block text-center">
+                        <a href="check_balance.php" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium inline-block text-center">
                             Check Balance
                         </a>
                     </div>
@@ -191,52 +191,52 @@ try {
                     </div>
 
                     <!-- Transfer - Active -->
-                    <div class="bg-purple-50 border-2 border-purple-200 rounded-lg p-6 text-center relative">
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 text-center relative">
                         <div class="absolute top-2 right-2">
-                            <span class="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
+                            <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
                         </div>
-                        <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                             </svg>
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Transfer</h4>
                         <p class="text-gray-600 text-sm mb-4">Send money to other users</p>
-                        <a href="transfer.php" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300 font-medium inline-block text-center">
+                        <a href="transfer.php" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium inline-block text-center">
                             Transfer Money
                         </a>
                     </div>
 
                     <!-- Transaction History - Active -->
-                    <div class="bg-orange-50 border-2 border-orange-200 rounded-lg p-6 text-center relative">
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 text-center relative">
                         <div class="absolute top-2 right-2">
-                            <span class="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
+                            <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
                         </div>
-                        <div class="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Transaction History</h4>
                         <p class="text-gray-600 text-sm mb-4">View all past transactions</p>
-                        <button class="w-full bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition duration-300 font-medium">
+                        <button class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
                             View History
                         </button>
                     </div>
 
                     <!-- Add Money - Active -->
-        <div class="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6 text-center relative">
+        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 text-center relative">
             <div class="absolute top-2 right-2">
-                <span class="bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
+                <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">✅ Active</span>
             </div>
-            <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
             </div>
             <h4 class="text-lg font-semibold text-gray-800 mb-2">Deposit Money</h4>
             <p class="text-gray-600 text-sm mb-4">Request deposit to your account (requires admin approval)</p>
-            <a href="deposit_request.php" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 font-medium inline-block text-center">
+            <a href="deposit_request.php" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium inline-block text-center">
                 Request Deposit
             </a>
         </div>

@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
                 $stmt->execute([$newUserId, $accountNumber]);
                 
-                $success = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="../user/login.php" class="text-blue-600 hover:underline">sign in</a>.';
+                $success = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="login.php" class="text-blue-600 hover:underline">sign in</a>.';
             }
         } catch(PDOException $e) {
             $error = 'Registration failed. Please try again.';
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <h1 class="text-3xl font-bold text-blue-600 mb-2">WeBank</h1>
             <h2 class="text-2xl font-semibold text-gray-900">Create your account</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Already have an account? <a href="../user/login.php" class="font-medium text-blue-600 hover:text-blue-500">Sign in</a>
+                Already have an account? <a href="login.php" class="font-medium text-blue-600 hover:text-blue-500">Sign in</a>
             </p>
         </div>
         

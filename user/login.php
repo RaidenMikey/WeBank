@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <h1 class="text-3xl font-bold text-blue-600 mb-2">WeBank</h1>
             <h2 class="text-2xl font-semibold text-gray-900">Sign in to your account</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Or <a href="../auth/signup.php" class="font-medium text-blue-600 hover:text-blue-500">create a new account</a>
+                Or <a href="signup.php" class="font-medium text-blue-600 hover:text-blue-500">create a new account</a>
             </p>
         </div>
         
