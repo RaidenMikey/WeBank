@@ -43,6 +43,22 @@ try {
         )
     ");
     
+    // Create billers table (must be created before transactions table)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS billers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            biller_name VARCHAR(100) NOT NULL,
+            category VARCHAR(50) NOT NULL,
+            account_number VARCHAR(50) NOT NULL,
+            description TEXT,
+            status ENUM('active', 'inactive') DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_category (category),
+            INDEX idx_status (status)
+        )
+    ");
+    
     // Create transactions table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS transactions (
@@ -102,22 +118,6 @@ try {
             INDEX idx_user_id (user_id),
             INDEX idx_status (status),
             INDEX idx_created_at (created_at)
-        )
-    ");
-    
-    // Create billers table
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS billers (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            biller_name VARCHAR(100) NOT NULL,
-            category VARCHAR(50) NOT NULL,
-            account_number VARCHAR(50) NOT NULL,
-            description TEXT,
-            status ENUM('active', 'inactive') DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_category (category),
-            INDEX idx_status (status)
         )
     ");
     
