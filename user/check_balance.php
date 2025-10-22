@@ -292,8 +292,21 @@ try {
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <p class="font-semibold <?php echo $transaction['type'] === 'deposit' || $transaction['type'] === 'credit' ? 'text-green-600' : 'text-red-600'; ?>">
-                                            <?php echo ($transaction['type'] === 'deposit' || $transaction['type'] === 'credit') ? '+' : '-'; ?>$<?php echo number_format($transaction['amount'], 2); ?>
+                                        <?php 
+                                        // For deposits and credits, always show positive
+                                        // For other transactions, check if amount is positive or negative
+                                        if ($transaction['type'] === 'deposit' || $transaction['type'] === 'credit') {
+                                            $isPositive = true;
+                                            $displayAmount = $transaction['amount'];
+                                        } else {
+                                            $isPositive = $transaction['amount'] > 0;
+                                            $displayAmount = abs($transaction['amount']);
+                                        }
+                                        $sign = $isPositive ? '+' : '-';
+                                        $color = $isPositive ? 'text-green-600' : 'text-red-600';
+                                        ?>
+                                        <p class="font-semibold <?php echo $color; ?>">
+                                            <?php echo $sign; ?>₱<?php echo number_format($displayAmount, 2); ?>
                                         </p>
                                         <p class="text-sm text-gray-500"><?php echo date('M j, g:i A', strtotime($transaction['created_at'])); ?></p>
                                     </div>

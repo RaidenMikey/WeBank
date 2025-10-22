@@ -18,8 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $reference_number = trim($_POST['reference_number']);
     
     if (empty($biller_id) || $amount <= 0 || empty($reference_number)) {
-        $message = 'Please fill in all fields with valid values.';
-        $messageType = 'error';
+        $_SESSION['message'] = 'Please fill in all fields with valid values.';
+        $_SESSION['messageType'] = 'error';
     } else {
         try {
             // Get user's current balance
@@ -36,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             
             if ($account['balance'] < $amount) {
-                $message = 'Insufficient balance. Your current balance is ₱' . number_format($account['balance'], 2);
-                $messageType = 'error';
+                $_SESSION['message'] = 'Insufficient balance. Your current balance is ₱' . number_format($account['balance'], 2);
+                $_SESSION['messageType'] = 'error';
             } else {
                 // Get biller information
                 $stmt = $pdo->prepare("SELECT biller_name, category FROM billers WHERE id = ? AND status = 'active'");
@@ -45,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $biller = $stmt->fetch();
                 
                 if (!$biller) {
-                    $message = 'Selected biller is not available.';
-                    $messageType = 'error';
+                    $_SESSION['message'] = 'Selected biller is not available.';
+                    $_SESSION['messageType'] = 'error';
                 } else {
                     // Start transaction
                     $pdo->beginTransaction();
@@ -69,25 +69,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         $pdo->commit();
                         
-                        $message = 'Bill payment of ₱' . number_format($amount, 2) . ' to ' . $biller['biller_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $reference_id . '</strong>';
-                        $messageType = 'success';
-                        
-                        // Clear form data
-                        $_POST = [];
+                        $_SESSION['message'] = 'Bill payment of ₱' . number_format($amount, 2) . ' to ' . $biller['biller_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $reference_id . '</strong>';
+                        $_SESSION['messageType'] = 'success';
                         
                     } catch (Exception $e) {
                         $pdo->rollback();
-                        $message = 'Payment failed: ' . $e->getMessage() . '. Please try again.';
-                        $messageType = 'error';
+                        $_SESSION['message'] = 'Payment failed: ' . $e->getMessage() . '. Please try again.';
+                        $_SESSION['messageType'] = 'error';
                     }
                 }
             }
         } catch (PDOException $e) {
-            $message = 'Payment processing failed: ' . $e->getMessage() . '. Please try again.';
-            $messageType = 'error';
+            $_SESSION['message'] = 'Payment processing failed: ' . $e->getMessage() . '. Please try again.';
+            $_SESSION['messageType'] = 'error';
         }
     }
+    
+    // Redirect to prevent form resubmission
+    header('Location: pay_bills.php');
+    exit();
 }
+
+// Get messages from session
+$message = $_SESSION['message'] ?? '';
+$messageType = $_SESSION['messageType'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['message'], $_SESSION['messageType']);
 
 // Get user's current balance
 $stmt = $pdo->prepare("SELECT balance FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");

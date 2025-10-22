@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $description = trim($_POST['description']);
     
     if ($user_id <= 0 || $amount <= 0) {
-        $error = 'Invalid user ID or amount.';
+        $_SESSION['error'] = 'Invalid user ID or amount.';
     } else {
         try {
             // Start transaction
@@ -64,14 +64,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $stmt->execute([$user_id, $amount, $description ?: 'Admin deposit', $reference_id]);
             
             $pdo->commit();
-            $success = "Successfully deposited ₱" . number_format($amount, 2) . " to " . $user['first_name'] . " " . $user['last_name'] . "'s account. New balance: ₱" . number_format($new_balance, 2);
+            $_SESSION['success'] = "Successfully deposited ₱" . number_format($amount, 2) . " to " . $user['first_name'] . " " . $user['last_name'] . "'s account. New balance: ₱" . number_format($new_balance, 2);
             
         } catch (Exception $e) {
             $pdo->rollBack();
-            $error = 'Deposit failed: ' . $e->getMessage();
+            $_SESSION['error'] = 'Deposit failed: ' . $e->getMessage();
         }
     }
+    
+    // Redirect to prevent form resubmission
+    header('Location: dashboard.php');
+    exit();
 }
+
+// Get messages from session
+$success = $_SESSION['success'] ?? '';
+$error = $_SESSION['error'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['success'], $_SESSION['error']);
 
 // Get all users for selection
 try {

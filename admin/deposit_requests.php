@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             $description = 'Deposit approved: ' . ($request['description'] ?: 'Deposit request');
             $stmt->execute([$request['user_id'], $request['amount'], $description, $reference_id]);
             
-            $success = "Deposit request approved. ₱" . number_format($request['amount'], 2) . " has been added to " . $request['first_name'] . " " . $request['last_name'] . "'s account.";
+            $_SESSION['success'] = "Deposit request approved. ₱" . number_format($request['amount'], 2) . " has been added to " . $request['first_name'] . " " . $request['last_name'] . "'s account.";
             
         } elseif ($action === 'reject') {
             // Update deposit request status
@@ -85,16 +85,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             ");
             $stmt->execute([$admin_notes, $_SESSION['admin_id'], $request_id]);
             
-            $success = "Deposit request rejected for " . $request['first_name'] . " " . $request['last_name'] . ".";
+            $_SESSION['success'] = "Deposit request rejected for " . $request['first_name'] . " " . $request['last_name'] . ".";
         }
         
         $pdo->commit();
         
     } catch (Exception $e) {
         $pdo->rollBack();
-        $error = 'Failed to process deposit request: ' . $e->getMessage();
+        $_SESSION['error'] = 'Failed to process deposit request: ' . $e->getMessage();
     }
+    
+    // Redirect to prevent form resubmission
+    header('Location: deposit_requests.php');
+    exit();
 }
+
+// Get messages from session
+$success = $_SESSION['success'] ?? '';
+$error = $_SESSION['error'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['success'], $_SESSION['error']);
 
 // Get all pending deposit requests
 try {

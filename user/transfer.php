@@ -18,8 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = trim($_POST['description']);
     
     if (empty($recipient_identifier) || $amount <= 0) {
-        $message = 'Please fill in all required fields with valid values.';
-        $messageType = 'error';
+        $_SESSION['message'] = 'Please fill in all required fields with valid values.';
+        $_SESSION['messageType'] = 'error';
     } else {
         try {
             // Get sender's current balance and account number
@@ -36,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             
             if ($senderAccount['balance'] < $amount) {
-                $message = 'Insufficient balance. Your current balance is ₱' . number_format($senderAccount['balance'], 2);
-                $messageType = 'error';
+                $_SESSION['message'] = 'Insufficient balance. Your current balance is ₱' . number_format($senderAccount['balance'], 2);
+                $_SESSION['messageType'] = 'error';
             } else {
                 // Find recipient by account number or username/email
                 $stmt = $pdo->prepare("
@@ -51,11 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $recipient = $stmt->fetch();
                 
                 if (!$recipient) {
-                    $message = 'Recipient not found. Please check the account number, email, or name.';
-                    $messageType = 'error';
+                    $_SESSION['message'] = 'Recipient not found. Please check the account number, email, or name.';
+                    $_SESSION['messageType'] = 'error';
                 } elseif ($recipient['id'] == $_SESSION['user_id']) {
-                    $message = 'You cannot transfer money to yourself.';
-                    $messageType = 'error';
+                    $_SESSION['message'] = 'You cannot transfer money to yourself.';
+                    $_SESSION['messageType'] = 'error';
                 } else {
                     // Start transaction
                     $pdo->beginTransaction();
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $senderReference = 'TRANSFER_OUT_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
                         $recipientReference = 'TRANSFER_IN_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
                         
-                        // Log sender's transaction (outgoing)
+                        // Log sender's transaction (outgoing) - negative amount
                         $stmt = $pdo->prepare("
                             INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
                             VALUES (?, 'transfer', ?, ?, 'completed', ?)
@@ -92,9 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (!empty($description)) {
                             $senderDescription .= " - " . $description;
                         }
-                        $stmt->execute([$_SESSION['user_id'], $amount, $senderDescription, $senderReference]);
+                        $stmt->execute([$_SESSION['user_id'], -$amount, $senderDescription, $senderReference]);
                         
-                        // Log recipient's transaction (incoming)
+                        // Log recipient's transaction (incoming) - positive amount
                         $stmt = $pdo->prepare("
                             INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
                             VALUES (?, 'transfer', ?, ?, 'completed', ?)
@@ -107,25 +107,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         $pdo->commit();
                         
-                        $message = 'Transfer of ₱' . number_format($amount, 2) . ' to ' . $recipient['first_name'] . ' ' . $recipient['last_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $senderReference . '</strong>';
-                        $messageType = 'success';
-                        
-                        // Clear form data
-                        $_POST = [];
+                        $_SESSION['message'] = 'Transfer of ₱' . number_format($amount, 2) . ' to ' . $recipient['first_name'] . ' ' . $recipient['last_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $senderReference . '</strong>';
+                        $_SESSION['messageType'] = 'success';
                         
                     } catch (Exception $e) {
                         $pdo->rollback();
-                        $message = 'Transfer failed: ' . $e->getMessage() . '. Please try again.';
-                        $messageType = 'error';
+                        $_SESSION['message'] = 'Transfer failed: ' . $e->getMessage() . '. Please try again.';
+                        $_SESSION['messageType'] = 'error';
                     }
                 }
             }
         } catch (PDOException $e) {
-            $message = 'Transfer processing failed: ' . $e->getMessage() . '. Please try again.';
-            $messageType = 'error';
+            $_SESSION['message'] = 'Transfer processing failed: ' . $e->getMessage() . '. Please try again.';
+            $_SESSION['messageType'] = 'error';
         }
     }
+    
+    // Redirect to prevent form resubmission
+    header('Location: transfer.php');
+    exit();
 }
+
+// Get messages from session
+$message = $_SESSION['message'] ?? '';
+$messageType = $_SESSION['messageType'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['message'], $_SESSION['messageType']);
 
 // Get user's current balance
 $stmt = $pdo->prepare("SELECT balance FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");

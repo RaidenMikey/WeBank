@@ -15,13 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Validation
     if (empty($firstName) || empty($lastName) || empty($email) || empty($password) || empty($confirmPassword)) {
-        $error = 'Please fill in all required fields.';
+        $_SESSION['error'] = 'Please fill in all required fields.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Please enter a valid email address.';
+        $_SESSION['error'] = 'Please enter a valid email address.';
     } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters long.';
+        $_SESSION['error'] = 'Password must be at least 6 characters long.';
     } elseif ($password !== $confirmPassword) {
-        $error = 'Passwords do not match.';
+        $_SESSION['error'] = 'Passwords do not match.';
     } else {
         try {
             // Check if email already exists
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->execute([$email]);
             
             if ($stmt->fetch()) {
-                $error = 'An account with this email already exists.';
+                $_SESSION['error'] = 'An account with this email already exists.';
             } else {
                 // Hash password and insert user
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
@@ -44,13 +44,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
                 $stmt->execute([$newUserId, $accountNumber]);
                 
-                $success = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="login.php" class="text-blue-600 hover:underline">sign in</a>.';
+                $_SESSION['success'] = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="login.php" class="text-blue-600 hover:underline">sign in</a>.';
             }
         } catch(PDOException $e) {
-            $error = 'Registration failed. Please try again.';
+            $_SESSION['error'] = 'Registration failed. Please try again.';
         }
     }
+    
+    // Redirect to prevent form resubmission
+    header('Location: signup.php');
+    exit();
 }
+
+// Get messages from session
+$error = $_SESSION['error'] ?? '';
+$success = $_SESSION['success'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['error'], $_SESSION['success']);
 ?>
 
 <!DOCTYPE html>

@@ -50,11 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $phone = trim($_POST['phone']);
         
         if (empty($firstName) || empty($lastName) || empty($email)) {
-            $message = 'Please fill in all required fields.';
-            $messageType = 'error';
+            $_SESSION['message'] = 'Please fill in all required fields.';
+            $_SESSION['messageType'] = 'error';
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $message = 'Please enter a valid email address.';
-            $messageType = 'error';
+            $_SESSION['message'] = 'Please enter a valid email address.';
+            $_SESSION['messageType'] = 'error';
         } else {
             try {
                 // Check if email is already taken by another user
@@ -62,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt->execute([$email, $_SESSION['user_id']]);
                 
                 if ($stmt->fetch()) {
-                    $message = 'This email is already taken by another user.';
-                    $messageType = 'error';
+                    $_SESSION['message'] = 'This email is already taken by another user.';
+                    $_SESSION['messageType'] = 'error';
                 } else {
                     // Update user information
                     $stmt = $pdo->prepare("
@@ -76,69 +76,52 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Update session name
                     $_SESSION['user_name'] = $firstName . ' ' . $lastName;
                     
-                    $message = 'Profile updated successfully!';
-                    $messageType = 'success';
-                    
-                    // Refresh user info
-                    $stmt = $pdo->prepare("
-                        SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.created_at,
-                               a.account_number, a.balance, a.status as account_status
-                        FROM users u 
-                        LEFT JOIN accounts a ON u.id = a.user_id AND a.status = 'active'
-                        WHERE u.id = ?
-                        ORDER BY a.created_at DESC 
-                        LIMIT 1
-                    ");
-                    $stmt->execute([$_SESSION['user_id']]);
-                    $userInfo = $stmt->fetch();
-                    $accountInfo = $userInfo;
+                    $_SESSION['message'] = 'Profile updated successfully!';
+                    $_SESSION['messageType'] = 'success';
                 }
             } catch(PDOException $e) {
-                $message = 'Failed to update profile. Please try again.';
-                $messageType = 'error';
+                $_SESSION['message'] = 'Failed to update profile. Please try again.';
+                $_SESSION['messageType'] = 'error';
             }
         }
     }
     
-    elseif ($action === 'change_password') {
-        $currentPassword = $_POST['current_password'];
-        $newPassword = $_POST['new_password'];
-        $confirmPassword = $_POST['confirm_password'];
-        
-        if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
-            $message = 'Please fill in all password fields.';
-            $messageType = 'error';
-        } elseif (strlen($newPassword) < 6) {
-            $message = 'New password must be at least 6 characters long.';
-            $messageType = 'error';
-        } elseif ($newPassword !== $confirmPassword) {
-            $message = 'New passwords do not match.';
-            $messageType = 'error';
-        } else {
-            try {
-                // Verify current password
-                $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
-                $stmt->execute([$_SESSION['user_id']]);
-                $user = $stmt->fetch();
-                
-                if (!$user || !password_verify($currentPassword, $user['password'])) {
-                    $message = 'Current password is incorrect.';
-                    $messageType = 'error';
-                } else {
-                    // Update password
-                    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-                    $stmt->execute([$hashedPassword, $_SESSION['user_id']]);
-                    
-                    $message = 'Password changed successfully!';
-                    $messageType = 'success';
-                }
-            } catch(PDOException $e) {
-                $message = 'Failed to change password. Please try again.';
-                $messageType = 'error';
-            }
-        }
+    // Redirect to prevent form resubmission
+    header('Location: settings.php');
+    exit();
+}
+
+// Get messages from session
+$message = $_SESSION['message'] ?? '';
+$messageType = $_SESSION['messageType'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['message'], $_SESSION['messageType']);
+
+// Get user and account information
+try {
+    // Get user information
+    $stmt = $pdo->prepare("
+        SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.created_at,
+               a.account_number, a.balance, a.status as account_status
+        FROM users u 
+        LEFT JOIN accounts a ON u.id = a.user_id AND a.status = 'active'
+        WHERE u.id = ?
+        ORDER BY a.created_at DESC 
+        LIMIT 1
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $userInfo = $stmt->fetch();
+    
+    if (!$userInfo) {
+        $message = 'User information not found.';
+        $messageType = 'error';
+    } else {
+        $accountInfo = $userInfo;
     }
+} catch(PDOException $e) {
+    $message = 'Unable to retrieve user information.';
+    $messageType = 'error';
 }
 ?>
 
@@ -418,3 +401,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </script>
 </body>
 </html>
+

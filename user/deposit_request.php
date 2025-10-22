@@ -17,11 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = trim($_POST['description']);
     
     if ($amount <= 0) {
-        $error = 'Please enter a valid amount.';
+        $_SESSION['error'] = 'Please enter a valid amount.';
     } elseif ($amount < 100) {
-        $error = 'Minimum deposit amount is ₱100.';
+        $_SESSION['error'] = 'Minimum deposit amount is ₱100.';
     } elseif ($amount > 50000) {
-        $error = 'Maximum deposit amount is ₱50,000.';
+        $_SESSION['error'] = 'Maximum deposit amount is ₱50,000.';
     } else {
         try {
             // Insert deposit request
@@ -31,13 +31,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ");
             $stmt->execute([$_SESSION['user_id'], $amount, $description ?: 'Deposit request']);
             
-            $success = "Deposit request of ₱" . number_format($amount, 2) . " has been submitted for admin approval.";
+            $_SESSION['success'] = "Deposit request of ₱" . number_format($amount, 2) . " has been submitted for admin approval.";
             
         } catch(PDOException $e) {
-            $error = 'Failed to submit deposit request. Please try again.';
+            $_SESSION['error'] = 'Failed to submit deposit request. Please try again.';
         }
     }
+    
+    // Redirect to prevent form resubmission
+    header('Location: deposit_request.php');
+    exit();
 }
+
+// Get messages from session
+$success = $_SESSION['success'] ?? '';
+$error = $_SESSION['error'] ?? '';
+
+// Clear messages from session
+unset($_SESSION['success'], $_SESSION['error']);
 
 // Get user's pending deposit requests
 try {
