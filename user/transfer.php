@@ -16,104 +16,118 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $recipient_identifier = trim($_POST['recipient_identifier']);
     $amount = floatval($_POST['amount']);
     $description = trim($_POST['description']);
+    $password = $_POST['password'] ?? '';
     
     if (empty($recipient_identifier) || $amount <= 0) {
         $_SESSION['message'] = 'Please fill in all required fields with valid values.';
         $_SESSION['messageType'] = 'error';
+    } elseif (empty($password)) {
+        $_SESSION['message'] = 'Password is required to confirm this transfer.';
+        $_SESSION['messageType'] = 'error';
     } else {
         try {
-            // Get sender's current balance and account number
-            $stmt = $pdo->prepare("SELECT balance, account_number FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
+            // Verify user's password first
+            $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
             $stmt->execute([$_SESSION['user_id']]);
-            $senderAccount = $stmt->fetch();
+            $user = $stmt->fetch();
             
-            if (!$senderAccount) {
-                // Create account for sender if it doesn't exist
-                $accountNumber = 'WB' . str_pad($_SESSION['user_id'], 8, '0', STR_PAD_LEFT);
-                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                $stmt->execute([$_SESSION['user_id'], $accountNumber]);
-                $senderAccount = ['balance' => 0.00, 'account_number' => $accountNumber];
-            }
-            
-            if ($senderAccount['balance'] < $amount) {
-                $_SESSION['message'] = 'Insufficient balance. Your current balance is ₱' . number_format($senderAccount['balance'], 2);
+            if (!$user || !password_verify($password, $user['password'])) {
+                $_SESSION['message'] = 'Invalid password. Please try again.';
                 $_SESSION['messageType'] = 'error';
             } else {
-                // Find recipient by account number or username/email
-                $stmt = $pdo->prepare("
-                    SELECT u.id, u.first_name, u.last_name, u.email, a.account_number, a.balance 
-                    FROM users u 
-                    LEFT JOIN accounts a ON u.id = a.user_id AND a.status = 'active'
-                    WHERE a.account_number = ? OR u.email = ? OR CONCAT(u.first_name, ' ', u.last_name) = ?
-                    ORDER BY a.created_at DESC LIMIT 1
-                ");
-                $stmt->execute([$recipient_identifier, $recipient_identifier, $recipient_identifier]);
-                $recipient = $stmt->fetch();
+                // Get sender's current balance and account number
+                $stmt = $pdo->prepare("SELECT balance, account_number FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
+                $stmt->execute([$_SESSION['user_id']]);
+                $senderAccount = $stmt->fetch();
                 
-                if (!$recipient) {
-                    $_SESSION['message'] = 'Recipient not found. Please check the account number, email, or name.';
-                    $_SESSION['messageType'] = 'error';
-                } elseif ($recipient['id'] == $_SESSION['user_id']) {
-                    $_SESSION['message'] = 'You cannot transfer money to yourself.';
+                if (!$senderAccount) {
+                    // Create account for sender if it doesn't exist
+                    $accountNumber = 'WB' . str_pad($_SESSION['user_id'], 8, '0', STR_PAD_LEFT);
+                    $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
+                    $stmt->execute([$_SESSION['user_id'], $accountNumber]);
+                    $senderAccount = ['balance' => 0.00, 'account_number' => $accountNumber];
+                }
+            
+                if ($senderAccount['balance'] < $amount) {
+                    $_SESSION['message'] = 'Insufficient balance. Your current balance is ₱' . number_format($senderAccount['balance'], 2);
                     $_SESSION['messageType'] = 'error';
                 } else {
-                    // Start transaction
-                    $pdo->beginTransaction();
+                    // Find recipient by account number or username/email
+                    $stmt = $pdo->prepare("
+                        SELECT u.id, u.first_name, u.last_name, u.email, a.account_number, a.balance 
+                        FROM users u 
+                        LEFT JOIN accounts a ON u.id = a.user_id AND a.status = 'active'
+                        WHERE a.account_number = ? OR u.email = ? OR CONCAT(u.first_name, ' ', u.last_name) = ?
+                        ORDER BY a.created_at DESC LIMIT 1
+                    ");
+                    $stmt->execute([$recipient_identifier, $recipient_identifier, $recipient_identifier]);
+                    $recipient = $stmt->fetch();
                     
-                    try {
-                        // Deduct amount from sender's balance
-                        $stmt = $pdo->prepare("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND status = 'active'");
-                        $stmt->execute([$amount, $_SESSION['user_id']]);
-                        
-                        // Create or update recipient's account
-                        if (!$recipient['account_number']) {
-                            // Create account for recipient
-                            $recipientAccountNumber = 'WB' . str_pad($recipient['id'], 8, '0', STR_PAD_LEFT);
-                            $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                            $stmt->execute([$recipient['id'], $recipientAccountNumber]);
-                            $recipient['account_number'] = $recipientAccountNumber;
-                            $recipient['balance'] = 0.00;
-                        }
-                        
-                        // Add amount to recipient's balance
-                        $stmt = $pdo->prepare("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND status = 'active'");
-                        $stmt->execute([$amount, $recipient['id']]);
-                        
-                        // Generate reference IDs
-                        $senderReference = 'TRANSFER_OUT_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
-                        $recipientReference = 'TRANSFER_IN_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
-                        
-                        // Log sender's transaction (outgoing) - negative amount
-                        $stmt = $pdo->prepare("
-                            INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
-                            VALUES (?, 'transfer', ?, ?, 'completed', ?)
-                        ");
-                        $senderDescription = "Transfer to " . $recipient['first_name'] . " " . $recipient['last_name'] . " (Account #" . $recipient['account_number'] . ")";
-                        if (!empty($description)) {
-                            $senderDescription .= " - " . $description;
-                        }
-                        $stmt->execute([$_SESSION['user_id'], -$amount, $senderDescription, $senderReference]);
-                        
-                        // Log recipient's transaction (incoming) - positive amount
-                        $stmt = $pdo->prepare("
-                            INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
-                            VALUES (?, 'transfer', ?, ?, 'completed', ?)
-                        ");
-                        $recipientDescription = "Received ₱" . number_format($amount, 2) . " from " . $_SESSION['user_name'] . " (Account #" . $senderAccount['account_number'] . ")";
-                        if (!empty($description)) {
-                            $recipientDescription .= " - " . $description;
-                        }
-                        $stmt->execute([$recipient['id'], $amount, $recipientDescription, $recipientReference]);
-                        
-                        $pdo->commit();
-                        
-                        $_SESSION['message'] = 'Transfer of ₱' . number_format($amount, 2) . ' to ' . $recipient['first_name'] . ' ' . $recipient['last_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $senderReference . '</strong>';
-                        $_SESSION['messageType'] = 'success';
-                        
-                    } catch (Exception $e) {
-                        $pdo->rollback();
-                        $_SESSION['message'] = 'Transfer failed: ' . $e->getMessage() . '. Please try again.';
+                    if (!$recipient) {
+                        $_SESSION['message'] = 'Recipient not found. Please check the account number, email, or name.';
                         $_SESSION['messageType'] = 'error';
+                    } elseif ($recipient['id'] == $_SESSION['user_id']) {
+                        $_SESSION['message'] = 'You cannot transfer money to yourself.';
+                        $_SESSION['messageType'] = 'error';
+                    } else {
+                        // Start transaction
+                        $pdo->beginTransaction();
+                        
+                        try {
+                            // Deduct amount from sender's balance
+                            $stmt = $pdo->prepare("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND status = 'active'");
+                            $stmt->execute([$amount, $_SESSION['user_id']]);
+                            
+                            // Create or update recipient's account
+                            if (!$recipient['account_number']) {
+                                // Create account for recipient
+                                $recipientAccountNumber = 'WB' . str_pad($recipient['id'], 8, '0', STR_PAD_LEFT);
+                                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
+                                $stmt->execute([$recipient['id'], $recipientAccountNumber]);
+                                $recipient['account_number'] = $recipientAccountNumber;
+                                $recipient['balance'] = 0.00;
+                            }
+                            
+                            // Add amount to recipient's balance
+                            $stmt = $pdo->prepare("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND status = 'active'");
+                            $stmt->execute([$amount, $recipient['id']]);
+                            
+                            // Generate reference IDs
+                            $senderReference = 'TRANSFER_OUT_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
+                            $recipientReference = 'TRANSFER_IN_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
+                            
+                            // Log sender's transaction (outgoing) - negative amount
+                            $stmt = $pdo->prepare("
+                                INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
+                                VALUES (?, 'transfer', ?, ?, 'completed', ?)
+                            ");
+                            $senderDescription = "Transfer to " . $recipient['first_name'] . " " . $recipient['last_name'] . " (Account #" . $recipient['account_number'] . ")";
+                            if (!empty($description)) {
+                                $senderDescription .= " - " . $description;
+                            }
+                            $stmt->execute([$_SESSION['user_id'], -$amount, $senderDescription, $senderReference]);
+                            
+                            // Log recipient's transaction (incoming) - positive amount
+                            $stmt = $pdo->prepare("
+                                INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
+                                VALUES (?, 'transfer', ?, ?, 'completed', ?)
+                            ");
+                            $recipientDescription = "Received ₱" . number_format($amount, 2) . " from " . $_SESSION['user_name'] . " (Account #" . $senderAccount['account_number'] . ")";
+                            if (!empty($description)) {
+                                $recipientDescription .= " - " . $description;
+                            }
+                            $stmt->execute([$recipient['id'], $amount, $recipientDescription, $recipientReference]);
+                            
+                            $pdo->commit();
+                            
+                            $_SESSION['message'] = 'Transfer of ₱' . number_format($amount, 2) . ' to ' . $recipient['first_name'] . ' ' . $recipient['last_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $senderReference . '</strong>';
+                            $_SESSION['messageType'] = 'success';
+                            
+                        } catch (Exception $e) {
+                            $pdo->rollback();
+                            $_SESSION['message'] = 'Transfer failed: ' . $e->getMessage() . '. Please try again.';
+                            $_SESSION['messageType'] = 'error';
+                        }
                     }
                 }
             }
@@ -230,7 +244,10 @@ $currentBalance = $account ? $account['balance'] : 0;
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Send Money</h2>
             
-            <form method="POST" class="space-y-6">
+            <form method="POST" id="transferForm" class="space-y-6">
+                <!-- Hidden password field -->
+                <input type="hidden" name="password" id="passwordField">
+                
                 <!-- Recipient Information -->
                 <div>
                     <label for="recipient_identifier" class="block text-sm font-medium text-gray-700 mb-2">Recipient</label>
@@ -260,7 +277,7 @@ $currentBalance = $account ? $account['balance'] : 0;
 
                 <!-- Submit Button -->
                 <div class="flex justify-end">
-                    <button type="submit" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">
+                    <button type="button" id="confirmTransferBtn" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">
                         Send Money
                     </button>
                 </div>
@@ -299,6 +316,63 @@ $currentBalance = $account ? $account['balance'] : 0;
         </div>
     </main>
 
+    <!-- Transfer Confirmation Modal -->
+    <div id="transferModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Confirm Transfer</h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Transfer Details -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-600">Recipient:</span>
+                            <span id="modalRecipient" class="text-sm text-gray-900"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-600">Amount:</span>
+                            <span id="modalAmount" class="text-sm font-bold text-green-600"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-600">Description:</span>
+                            <span id="modalDescription" class="text-sm text-gray-900"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Password Input -->
+                <div class="mb-4">
+                    <label for="passwordInput" class="block text-sm font-medium text-gray-700 mb-2">
+                        Enter your password to confirm this transfer
+                    </label>
+                    <input type="password" id="passwordInput" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                           placeholder="Enter your password">
+                </div>
+                
+                <!-- Modal Actions -->
+                <div class="flex justify-end space-x-3">
+                    <button id="cancelTransfer" 
+                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-300">
+                        Cancel
+                    </button>
+                    <button id="confirmTransfer" 
+                            class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition duration-300">
+                        Confirm Transfer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-gray-800 text-white py-6 no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -325,6 +399,58 @@ $currentBalance = $account ? $account['balance'] : 0;
             if (!dropdown.contains(event.target)) {
                 dropdownMenu.classList.add('hidden');
                 document.getElementById('dropdownArrow').style.transform = 'rotate(0deg)';
+            }
+        });
+
+        // Transfer confirmation modal
+        document.getElementById('confirmTransferBtn').addEventListener('click', function() {
+            const recipient = document.getElementById('recipient_identifier').value;
+            const amount = document.getElementById('amount').value;
+            const description = document.getElementById('description').value;
+            
+            if (!recipient || !amount) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            // Show confirmation modal
+            document.getElementById('transferModal').classList.remove('hidden');
+            document.getElementById('modalRecipient').textContent = recipient;
+            document.getElementById('modalAmount').textContent = '₱' + parseFloat(amount).toFixed(2);
+            document.getElementById('modalDescription').textContent = description || 'No description';
+        });
+
+        // Close modal
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('transferModal').classList.add('hidden');
+            document.getElementById('passwordInput').value = '';
+        });
+
+        // Cancel transfer
+        document.getElementById('cancelTransfer').addEventListener('click', function() {
+            document.getElementById('transferModal').classList.add('hidden');
+            document.getElementById('passwordInput').value = '';
+        });
+
+        // Confirm transfer
+        document.getElementById('confirmTransfer').addEventListener('click', function() {
+            const password = document.getElementById('passwordInput').value;
+            
+            if (!password) {
+                alert('Please enter your password.');
+                return;
+            }
+            
+            // Set password in hidden field and submit form
+            document.getElementById('passwordField').value = password;
+            document.getElementById('transferForm').submit();
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('transferModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+                document.getElementById('passwordInput').value = '';
             }
         });
     </script>
