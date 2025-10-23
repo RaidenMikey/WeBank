@@ -10,16 +10,26 @@ if (!isset($_SESSION['user_id'])) {
 
 $transactions = [];
 $error = '';
+$filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 
 try {
+    // Build query based on filter
+    $whereClause = "WHERE user_id = ?";
+    $params = [$_SESSION['user_id']];
+    
+    if ($filter !== 'all') {
+        $whereClause .= " AND type = ?";
+        $params[] = $filter;
+    }
+    
     // Get all transactions for the user
     $stmt = $pdo->prepare("
         SELECT type, amount, description, status, created_at, reference_id
         FROM transactions 
-        WHERE user_id = ? 
+        $whereClause
         ORDER BY created_at DESC
     ");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt->execute($params);
     $transactions = $stmt->fetchAll();
 } catch(PDOException $e) {
     $error = 'Unable to load transaction history. Please try again.';
@@ -63,11 +73,18 @@ try {
                         </button>
                         <div id="dropdownMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 hidden">
                             <div class="py-1">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
+                                <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                     </svg>
-                                    <span>Account</span>
+                                    <span>Account Settings</span>
+                                </a>
+                                <a href="dashboard.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+                                    </svg>
+                                    <span>Dashboard</span>
                                 </a>
                                 <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,6 +115,25 @@ try {
                 </div>
             <?php endif; ?>
 
+            <!-- Filter Options -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Filter Transactions</h3>
+                <div class="flex flex-wrap gap-2">
+                    <a href="?filter=all" class="px-4 py-2 rounded-lg <?php echo $filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; ?> transition duration-300">
+                        All Transactions
+                    </a>
+                    <a href="?filter=deposit" class="px-4 py-2 rounded-lg <?php echo $filter === 'deposit' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; ?> transition duration-300">
+                        Deposits
+                    </a>
+                    <a href="?filter=transfer" class="px-4 py-2 rounded-lg <?php echo $filter === 'transfer' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; ?> transition duration-300">
+                        Transfers
+                    </a>
+                    <a href="?filter=bill_payment" class="px-4 py-2 rounded-lg <?php echo $filter === 'bill_payment' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; ?> transition duration-300">
+                        Bill Payments
+                    </a>
+                </div>
+            </div>
+
             <!-- Transaction History -->
             <div class="bg-white rounded-lg shadow-md p-8">
                 <?php if (empty($transactions)): ?>
@@ -115,7 +151,83 @@ try {
                     </div>
                 <?php else: ?>
                     <div class="mb-6">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">All Transactions (<?php echo count($transactions); ?> total)</h3>
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">
+                            <?php 
+                            $filterText = $filter === 'all' ? 'All Transactions' : ucfirst($filter) . ' Transactions';
+                            echo $filterText . ' (' . count($transactions) . ' total)';
+                            ?>
+                        </h3>
+                        
+                        <!-- Transaction Summary -->
+                        <?php if ($filter === 'all'): ?>
+                            <?php
+                            $depositCount = 0;
+                            $transferCount = 0;
+                            $billCount = 0;
+                            $totalDeposits = 0;
+                            $totalTransfers = 0;
+                            $totalBills = 0;
+                            
+                            foreach ($transactions as $transaction) {
+                                if ($transaction['type'] === 'deposit') {
+                                    $depositCount++;
+                                    $totalDeposits += $transaction['amount'];
+                                } elseif ($transaction['type'] === 'transfer') {
+                                    $transferCount++;
+                                    $totalTransfers += abs($transaction['amount']);
+                                } elseif ($transaction['type'] === 'bill_payment') {
+                                    $billCount++;
+                                    $totalBills += abs($transaction['amount']);
+                                }
+                            }
+                            ?>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-green-100 p-2 rounded-full mr-3">
+                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-green-600 font-medium">Deposits</p>
+                                            <p class="text-lg font-bold text-green-800">₱<?php echo number_format($totalDeposits, 2); ?></p>
+                                            <p class="text-xs text-green-600"><?php echo $depositCount; ?> transactions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-blue-100 p-2 rounded-full mr-3">
+                                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-blue-600 font-medium">Transfers</p>
+                                            <p class="text-lg font-bold text-blue-800">₱<?php echo number_format($totalTransfers, 2); ?></p>
+                                            <p class="text-xs text-blue-600"><?php echo $transferCount; ?> transactions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <div class="bg-purple-100 p-2 rounded-full mr-3">
+                                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-purple-600 font-medium">Bill Payments</p>
+                                            <p class="text-lg font-bold text-purple-800">₱<?php echo number_format($totalBills, 2); ?></p>
+                                            <p class="text-xs text-purple-600"><?php echo $billCount; ?> transactions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="overflow-x-auto">

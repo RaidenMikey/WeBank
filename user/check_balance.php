@@ -318,6 +318,13 @@ try {
                     echo '<div class="text-center py-8"><p class="text-gray-500">Unable to load recent transactions</p></div>';
                 }
                 ?>
+                
+                <!-- View All Transactions Link -->
+                <div class="mt-4 text-center">
+                    <a href="transaction_history.php" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
+                        View All Transactions
+                    </a>
+                </div>
             </div>
         </div>
     </main>

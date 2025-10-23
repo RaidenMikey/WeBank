@@ -219,9 +219,9 @@ try {
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2">Transaction History</h4>
                         <p class="text-gray-600 text-sm mb-4">View all past transactions</p>
-                        <button class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
+                        <a href="transaction_history.php" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 font-medium inline-block text-center">
                             View History
-                        </button>
+                        </a>
                     </div>
 
                     <!-- Add Money - Active -->
