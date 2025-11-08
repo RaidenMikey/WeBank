@@ -8,99 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit();
 }
 
-$success = '';
-$error = '';
-
-// Handle deposit request approval/rejection
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
-    $request_id = (int)$_POST['request_id'];
-    $action = $_POST['action'];
-    $admin_notes = trim($_POST['admin_notes'] ?? '');
-    
-    try {
-        // Get the deposit request
-        $stmt = $pdo->prepare("
-            SELECT dr.*, u.first_name, u.last_name, u.email 
-            FROM deposit_requests dr 
-            JOIN users u ON dr.user_id = u.id 
-            WHERE dr.id = ? AND dr.status = 'pending'
-        ");
-        $stmt->execute([$request_id]);
-        $request = $stmt->fetch();
-        
-        if (!$request) {
-            throw new Exception('Deposit request not found or already processed.');
-        }
-        
-        $pdo->beginTransaction();
-        
-        if ($action === 'approve') {
-            // Update deposit request status
-            $stmt = $pdo->prepare("
-                UPDATE deposit_requests 
-                SET status = 'approved', admin_notes = ?, processed_by = ?, processed_at = CURRENT_TIMESTAMP 
-                WHERE id = ?
-            ");
-            $stmt->execute([$admin_notes, $_SESSION['admin_id'], $request_id]);
-            
-            // Get or create user's account
-            $stmt = $pdo->prepare("SELECT id, balance FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
-            $stmt->execute([$request['user_id']]);
-            $account = $stmt->fetch();
-            
-            if (!$account) {
-                // Create account for user
-                $accountNumber = 'WB' . str_pad($request['user_id'], 8, '0', STR_PAD_LEFT);
-                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                $stmt->execute([$request['user_id'], $accountNumber]);
-                $account_id = $pdo->lastInsertId();
-                $current_balance = 0.00;
-            } else {
-                $account_id = $account['id'];
-                $current_balance = $account['balance'];
-            }
-            
-            // Update account balance
-            $new_balance = $current_balance + $request['amount'];
-            $stmt = $pdo->prepare("UPDATE accounts SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-            $stmt->execute([$new_balance, $account_id]);
-            
-            // Log transaction
-            $stmt = $pdo->prepare("
-                INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
-                VALUES (?, 'deposit', ?, ?, 'completed', ?)
-            ");
-            $reference_id = 'DEPOSIT_' . $request_id . '_' . time();
-            $description = 'Deposit approved: ' . ($request['description'] ?: 'Deposit request');
-            $stmt->execute([$request['user_id'], $request['amount'], $description, $reference_id]);
-            
-            $_SESSION['success'] = "Deposit request approved. ₱" . number_format($request['amount'], 2) . " has been added to " . $request['first_name'] . " " . $request['last_name'] . "'s account.";
-            
-        } elseif ($action === 'reject') {
-            // Update deposit request status
-            $stmt = $pdo->prepare("
-                UPDATE deposit_requests 
-                SET status = 'rejected', admin_notes = ?, processed_by = ?, processed_at = CURRENT_TIMESTAMP 
-                WHERE id = ?
-            ");
-            $stmt->execute([$admin_notes, $_SESSION['admin_id'], $request_id]);
-            
-            $_SESSION['success'] = "Deposit request rejected for " . $request['first_name'] . " " . $request['last_name'] . ".";
-        }
-        
-        $pdo->commit();
-        
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $_SESSION['error'] = 'Failed to process deposit request: ' . $e->getMessage();
-    }
-    
-    // Redirect to prevent form resubmission
-    header('Location: deposit_requests.php');
-    exit();
-}
-
-// Get messages from session
+// Get messages from session (for display after redirect from process_deposit.php)
 $success = $_SESSION['success'] ?? '';
 $error = $_SESSION['error'] ?? '';
 
@@ -127,8 +35,8 @@ try {
         SELECT dr.*, u.first_name, u.last_name, u.email, admin.first_name as admin_first_name, admin.last_name as admin_last_name
         FROM deposit_requests dr 
         JOIN users u ON dr.user_id = u.id 
-        LEFT JOIN users admin ON dr.processed_by = admin.id
-        WHERE dr.status != 'pending'
+        LEFT JOIN admins admin ON dr.processed_by = admin.id
+        WHERE dr.status = 'processed'
         ORDER BY dr.processed_at DESC 
         LIMIT 20
     ");
@@ -240,6 +148,7 @@ try {
                                             <?php echo htmlspecialchars($request['first_name'] . ' ' . $request['last_name']); ?>
                                         </h4>
                                         <p class="text-sm text-gray-600"><?php echo htmlspecialchars($request['email']); ?></p>
+                                        <p class="text-sm font-mono text-gray-700"><strong>Reference:</strong> <?php echo htmlspecialchars($request['reference_number'] ?? 'N/A'); ?></p>
                                         <p class="text-sm text-gray-500">Requested: <?php echo date('M j, Y g:i A', strtotime($request['created_at'])); ?></p>
                                     </div>
                                     <div class="text-right">
@@ -255,25 +164,12 @@ try {
                                     </div>
                                 <?php endif; ?>
                                 
-                                <form method="POST" class="flex space-x-4">
-                                    <input type="hidden" name="request_id" value="<?php echo $request['id']; ?>">
-                                    <div class="flex-1">
-                                        <label for="admin_notes_<?php echo $request['id']; ?>" class="block text-sm font-medium text-gray-700 mb-2">Admin Notes (Optional)</label>
-                                        <textarea id="admin_notes_<?php echo $request['id']; ?>" name="admin_notes" rows="2"
-                                                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
-                                                  placeholder="Add notes about this request..."></textarea>
-                                    </div>
-                                    <div class="flex flex-col space-y-2">
-                                        <button type="submit" name="action" value="approve" 
-                                                class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">
-                                            Approve
-                                        </button>
-                                        <button type="submit" name="action" value="reject" 
-                                                class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition duration-300 font-medium">
-                                            Reject
-                                        </button>
-                                    </div>
-                                </form>
+                                <div class="flex justify-end">
+                                    <a href="process_deposit.php?id=<?php echo $request['id']; ?>" 
+                                       class="bg-green-600 text-white px-8 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">
+                                        Process Deposit
+                                    </a>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -294,6 +190,7 @@ try {
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Number</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed By</th>
@@ -312,17 +209,18 @@ try {
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-mono font-semibold text-gray-900">
+                                                <?php echo htmlspecialchars($request['reference_number'] ?? 'N/A'); ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-semibold text-gray-900">
                                                 ₱<?php echo number_format($request['amount'], 2); ?>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <?php
-                                            $statusClass = $request['status'] === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-                                            $statusText = ucfirst($request['status']);
-                                            ?>
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
-                                                <?php echo $statusText; ?>
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                Processed
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

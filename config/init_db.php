@@ -107,17 +107,19 @@ try {
             user_id INT NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
             description TEXT,
-            status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+            reference_number VARCHAR(50) UNIQUE,
+            status ENUM('pending', 'processed') DEFAULT 'pending',
             admin_notes TEXT,
             processed_by INT NULL,
             processed_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL,
+            FOREIGN KEY (processed_by) REFERENCES admins(id) ON DELETE SET NULL,
             INDEX idx_user_id (user_id),
             INDEX idx_status (status),
-            INDEX idx_created_at (created_at)
+            INDEX idx_created_at (created_at),
+            INDEX idx_reference_number (reference_number)
         )
     ");
     

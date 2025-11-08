@@ -24,9 +24,6 @@
                     <a href="user/login.php" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
                         Login
                     </a>
-                    <a href="admin/login.php" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition duration-300 font-medium">
-                        Admin
-                    </a>
                 </div>
             </div>
         </div>

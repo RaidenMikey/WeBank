@@ -190,12 +190,8 @@ try {
                                             <?php echo date('M j, Y', strtotime($user['created_at'])); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div class="flex space-x-2">
-                                                <a href="deposit.php?user_id=<?php echo $user['id']; ?>" 
-                                                   class="text-red-600 hover:text-red-900">Deposit</a>
-                                                <a href="user_details.php?id=<?php echo $user['id']; ?>" 
-                                                   class="text-blue-600 hover:text-blue-900">View</a>
-                                            </div>
+                                            <a href="user_info.php?id=<?php echo $user['id']; ?>" 
+                                               class="text-blue-600 hover:text-blue-900">View</a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

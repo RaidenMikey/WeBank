@@ -24,14 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['error'] = 'Maximum deposit amount is ₱50,000.';
     } else {
         try {
+            // Generate reference number
+            $reference_number = 'DR' . date('Ymd') . str_pad($_SESSION['user_id'], 4, '0', STR_PAD_LEFT) . str_pad(time() % 10000, 4, '0', STR_PAD_LEFT);
+            
             // Insert deposit request
             $stmt = $pdo->prepare("
-                INSERT INTO deposit_requests (user_id, amount, description, status) 
-                VALUES (?, ?, ?, 'pending')
+                INSERT INTO deposit_requests (user_id, amount, description, reference_number, status) 
+                VALUES (?, ?, ?, ?, 'pending')
             ");
-            $stmt->execute([$_SESSION['user_id'], $amount, $description ?: 'Deposit request']);
+            $stmt->execute([$_SESSION['user_id'], $amount, $description ?: 'Deposit request', $reference_number]);
             
-            $_SESSION['success'] = "Deposit request of ₱" . number_format($amount, 2) . " has been submitted for admin approval.";
+            $_SESSION['success'] = "Deposit request of ₱" . number_format($amount, 2) . " has been submitted. Reference Number: " . $reference_number;
             
         } catch(PDOException $e) {
             $_SESSION['error'] = 'Failed to submit deposit request. Please try again.';
@@ -203,6 +206,7 @@ try {
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Number</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -212,6 +216,11 @@ try {
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <?php foreach ($deposit_requests as $request): ?>
                                     <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-mono font-semibold text-gray-900">
+                                                <?php echo htmlspecialchars($request['reference_number'] ?? 'N/A'); ?>
+                                            </div>
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-semibold text-gray-900">
                                                 ₱<?php echo number_format($request['amount'], 2); ?>
@@ -231,13 +240,9 @@ try {
                                                     $statusClass = 'bg-yellow-100 text-yellow-800';
                                                     $statusText = 'Pending';
                                                     break;
-                                                case 'approved':
+                                                case 'processed':
                                                     $statusClass = 'bg-green-100 text-green-800';
-                                                    $statusText = 'Approved';
-                                                    break;
-                                                case 'rejected':
-                                                    $statusClass = 'bg-red-100 text-red-800';
-                                                    $statusText = 'Rejected';
+                                                    $statusText = 'Processed';
                                                     break;
                                             }
                                             ?>
