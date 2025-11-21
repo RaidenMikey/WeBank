@@ -10,6 +10,7 @@ header("Pragma: no-cache");
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? $pageTitle . ' - WeBank' : 'WeBank - Your Trusted Banking Partner'; ?></title>
+    <link rel="icon" type="image/jpeg" href="<?php echo strpos($_SERVER['PHP_SELF'], '/admin/') !== false || strpos($_SERVER['PHP_SELF'], '/user/') !== false ? '../assets/images/wb_logo.jpg' : 'assets/images/wb_logo.jpg'; ?>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         // Prevent bfcache (back/forward cache) issues
