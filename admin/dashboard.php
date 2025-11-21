@@ -8,89 +8,24 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit();
 }
 
-$success = '';
-$error = '';
-
-// Handle admin deposit
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'deposit') {
-    $user_id = (int)$_POST['user_id'];
-    $amount = (float)$_POST['amount'];
-    $description = trim($_POST['description']);
-    
-    if ($user_id <= 0 || $amount <= 0) {
-        $_SESSION['error'] = 'Invalid user ID or amount.';
-    } else {
-        try {
-            // Start transaction
-            $pdo->beginTransaction();
-            
-            // Check if user exists
-            $stmt = $pdo->prepare("SELECT id, first_name, last_name, email FROM users WHERE id = ?");
-            $stmt->execute([$user_id]);
-            $user = $stmt->fetch();
-            
-            if (!$user) {
-                throw new Exception('User not found.');
-            }
-            
-            // Get or create user's account
-            $stmt = $pdo->prepare("SELECT id, balance FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
-            $stmt->execute([$user_id]);
-            $account = $stmt->fetch();
-            
-            if (!$account) {
-                // Create account for user
-                $accountNumber = 'WB' . str_pad($user_id, 8, '0', STR_PAD_LEFT);
-                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                $stmt->execute([$user_id, $accountNumber]);
-                $account_id = $pdo->lastInsertId();
-                $current_balance = 0.00;
-            } else {
-                $account_id = $account['id'];
-                $current_balance = $account['balance'];
-            }
-            
-            // Update account balance
-            $new_balance = $current_balance + $amount;
-            $stmt = $pdo->prepare("UPDATE accounts SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-            $stmt->execute([$new_balance, $account_id]);
-            
-            // Log transaction
-            $stmt = $pdo->prepare("
-                INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
-                VALUES (?, 'deposit', ?, ?, 'completed', ?)
-            ");
-            $reference_id = 'ADMIN_' . time() . '_' . $user_id;
-            $stmt->execute([$user_id, $amount, $description ?: 'Admin deposit', $reference_id]);
-            
-            $pdo->commit();
-            $_SESSION['success'] = "Successfully deposited ₱" . number_format($amount, 2) . " to " . $user['first_name'] . " " . $user['last_name'] . "'s account. New balance: ₱" . number_format($new_balance, 2);
-            
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $_SESSION['error'] = 'Deposit failed: ' . $e->getMessage();
-        }
-    }
-    
-    // Redirect to prevent form resubmission
-    header('Location: dashboard.php');
-    exit();
-}
-
-// Get messages from session
-$success = $_SESSION['success'] ?? '';
-$error = $_SESSION['error'] ?? '';
-
-// Clear messages from session
-unset($_SESSION['success'], $_SESSION['error']);
-
-// Get all users for selection
+// Get Quick Stats
 try {
-    $stmt = $pdo->query("SELECT id, first_name, last_name, email, created_at FROM users ORDER BY created_at DESC");
-    $users = $stmt->fetchAll();
+    // Total Users
+    $stmt = $pdo->query("SELECT COUNT(*) FROM users");
+    $total_users = $stmt->fetchColumn();
+
+    // Pending Deposit Requests
+    $stmt = $pdo->query("SELECT COUNT(*) FROM deposit_requests WHERE status = 'pending'");
+    $pending_requests = $stmt->fetchColumn();
+
+    // Total Deposits (Completed)
+    $stmt = $pdo->query("SELECT SUM(amount) FROM transactions WHERE type = 'deposit' AND status = 'completed'");
+    $total_deposits = $stmt->fetchColumn() ?: 0.00;
+
 } catch(PDOException $e) {
-    $users = [];
-    $error = 'Unable to load users.';
+    $total_users = 0;
+    $pending_requests = 0;
+    $total_deposits = 0;
 }
 
 // Get recent admin transactions
@@ -116,78 +51,111 @@ include '../includes/navbar_admin.php';
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
         <div class="max-w-6xl mx-auto">
-            <!-- Page Title -->
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h2>
-                <p class="text-gray-600">Manage user accounts and deposits</p>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="mb-8 flex space-x-4">
-                <a href="deposit_requests.php" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
-                    Review Deposit Requests
-                </a>
-                <a href="users.php" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition duration-300 font-medium">
-                    Manage Users
-                </a>
-            </div>
-
-            <!-- Messages -->
-            <?php if ($success): ?>
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-                    <?php echo htmlspecialchars($success); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($error): ?>
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-
-            <!-- Admin Deposit Form -->
+            <!-- Welcome Section -->
             <div class="bg-white rounded-lg shadow-md p-8 mb-8">
-                <h3 class="text-2xl font-bold text-gray-800 mb-6">Admin Deposit / Initial Funding</h3>
-                
-                <form method="POST" class="space-y-6">
-                    <input type="hidden" name="action" value="deposit">
-                    
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">Select User</label>
-                            <select id="user_id" name="user_id" required 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
-                                <option value="">Choose a user...</option>
-                                <?php foreach ($users as $user): ?>
-                                    <option value="<?php echo $user['id']; ?>">
-                                        <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] . ' (' . $user['email'] . ')'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome, Admin</h2>
+                <p class="text-gray-600 text-lg">
+                    Hello <?php echo htmlspecialchars($_SESSION['admin_name'] ?? $_SESSION['admin_username']); ?>! 
+                    You have full control over the WeBank system.
+                </p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
                         </div>
-                        
-                        <div>
-                            <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount (₱)</label>
-                            <input id="amount" name="amount" type="number" step="0.01" min="0.01" required 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
-                                   placeholder="0.00">
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Total Users</h3>
+                            <p class="text-2xl font-bold text-blue-600"><?php echo number_format($total_users); ?></p>
                         </div>
                     </div>
-                    
-                    <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <input id="description" name="description" type="text" 
-                               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
-                               placeholder="e.g., Initial funding, Salary credit, Test deposit">
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-yellow-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Pending Requests</h3>
+                            <p class="text-2xl font-bold text-yellow-600"><?php echo number_format($pending_requests); ?></p>
+                        </div>
                     </div>
-                    
-                    <div class="flex justify-end">
-                        <button type="submit" 
-                                class="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition duration-300 font-medium">
-                            Process Deposit
-                        </button>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Total Deposits</h3>
+                            <p class="text-2xl font-bold text-green-600">₱<?php echo number_format($total_deposits, 2); ?></p>
+                        </div>
                     </div>
-                </form>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            <div class="bg-white rounded-lg shadow-md p-8 mb-8">
+                <h3 class="text-2xl font-bold text-gray-800 mb-6">Admin Actions</h3>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Fund User -->
+                    <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center relative">
+                        <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Fund User Account</h4>
+                        <p class="text-gray-600 text-sm mb-4">Directly add funds to a user's account</p>
+                        <a href="deposit.php" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 font-medium inline-block text-center">
+                            Fund User
+                        </a>
+                    </div>
+
+                    <!-- Review Requests -->
+                    <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center relative">
+                        <?php if ($pending_requests > 0): ?>
+                            <div class="absolute top-2 right-2">
+                                <span class="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full"><?php echo $pending_requests; ?> Pending</span>
+                            </div>
+                        <?php endif; ?>
+                        <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Review Requests</h4>
+                        <p class="text-gray-600 text-sm mb-4">Approve or reject deposit requests</p>
+                        <a href="deposit_requests.php" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 font-medium inline-block text-center">
+                            Review Requests
+                        </a>
+                    </div>
+
+                    <!-- Manage Users -->
+                    <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center relative">
+                        <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Manage Users</h4>
+                        <p class="text-gray-600 text-sm mb-4">View and manage user accounts</p>
+                        <a href="users.php" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 font-medium inline-block text-center">
+                            Manage Users
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- Recent Admin Transactions -->
