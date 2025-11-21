@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once '../includes/security.php';
+secure_session_start();
 require_once '../config/database.php';
 
 // Check if user is logged in
@@ -13,127 +14,133 @@ $messageType = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $recipient_identifier = trim($_POST['recipient_identifier']);
-    $amount = floatval($_POST['amount']);
-    $description = trim($_POST['description']);
-    $password = $_POST['password'] ?? '';
-    
-    if (empty($recipient_identifier) || $amount <= 0) {
-        $_SESSION['message'] = 'Please fill in all required fields with valid values.';
-        $_SESSION['messageType'] = 'error';
-    } elseif (empty($password)) {
-        $_SESSION['message'] = 'Password is required to confirm this transfer.';
+    // CSRF Verification
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $_SESSION['message'] = 'Invalid session. Please refresh and try again.';
         $_SESSION['messageType'] = 'error';
     } else {
-        try {
-            // Verify user's password first
-            $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $user = $stmt->fetch();
-            
-            if (!$user || !password_verify($password, $user['password'])) {
-                $_SESSION['message'] = 'Invalid password. Please try again.';
-                $_SESSION['messageType'] = 'error';
-            } else {
-                // Get sender's current balance and account number
-                $stmt = $pdo->prepare("SELECT balance, account_number FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
+        $recipient_identifier = trim($_POST['recipient_identifier']);
+        $amount = floatval($_POST['amount']);
+        $description = trim($_POST['description']);
+        $password = $_POST['password'] ?? '';
+        
+        if (empty($recipient_identifier) || $amount <= 0) {
+            $_SESSION['message'] = 'Please fill in all required fields with valid values.';
+            $_SESSION['messageType'] = 'error';
+        } elseif (empty($password)) {
+            $_SESSION['message'] = 'Password is required to confirm this transfer.';
+            $_SESSION['messageType'] = 'error';
+        } else {
+            try {
+                // Verify user's password first
+                $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
                 $stmt->execute([$_SESSION['user_id']]);
-                $senderAccount = $stmt->fetch();
+                $user = $stmt->fetch();
                 
-                if (!$senderAccount) {
-                    // Create account for sender if it doesn't exist
-                    $accountNumber = 'WB' . str_pad($_SESSION['user_id'], 8, '0', STR_PAD_LEFT);
-                    $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                    $stmt->execute([$_SESSION['user_id'], $accountNumber]);
-                    $senderAccount = ['balance' => 0.00, 'account_number' => $accountNumber];
-                }
-            
-                if ($senderAccount['balance'] < $amount) {
-                    $_SESSION['message'] = 'Insufficient balance. Your current balance is ₱' . number_format($senderAccount['balance'], 2);
+                if (!$user || !password_verify($password, $user['password'])) {
+                    $_SESSION['message'] = 'Invalid password. Please try again.';
                     $_SESSION['messageType'] = 'error';
                 } else {
-                    // Find recipient by account number or username/email
-                    $stmt = $pdo->prepare("
-                        SELECT u.id, u.first_name, u.last_name, u.email, a.account_number, a.balance 
-                        FROM users u 
-                        LEFT JOIN accounts a ON u.id = a.user_id AND a.status = 'active'
-                        WHERE a.account_number = ? OR u.email = ? OR CONCAT(u.first_name, ' ', u.last_name) = ?
-                        ORDER BY a.created_at DESC LIMIT 1
-                    ");
-                    $stmt->execute([$recipient_identifier, $recipient_identifier, $recipient_identifier]);
-                    $recipient = $stmt->fetch();
+                    // Get sender's current balance and account number
+                    $stmt = $pdo->prepare("SELECT balance, account_number FROM accounts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
+                    $stmt->execute([$_SESSION['user_id']]);
+                    $senderAccount = $stmt->fetch();
                     
-                    if (!$recipient) {
-                        $_SESSION['message'] = 'Recipient not found. Please check the account number, email, or name.';
-                        $_SESSION['messageType'] = 'error';
-                    } elseif ($recipient['id'] == $_SESSION['user_id']) {
-                        $_SESSION['message'] = 'You cannot transfer money to yourself.';
+                    if (!$senderAccount) {
+                        // Create account for sender if it doesn't exist
+                        $accountNumber = 'WB' . str_pad($_SESSION['user_id'], 8, '0', STR_PAD_LEFT);
+                        $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
+                        $stmt->execute([$_SESSION['user_id'], $accountNumber]);
+                        $senderAccount = ['balance' => 0.00, 'account_number' => $accountNumber];
+                    }
+                
+                    if ($senderAccount['balance'] < $amount) {
+                        $_SESSION['message'] = 'Insufficient balance. Your current balance is ₱' . number_format($senderAccount['balance'], 2);
                         $_SESSION['messageType'] = 'error';
                     } else {
-                        // Start transaction
-                        $pdo->beginTransaction();
+                        // Find recipient by account number or username/email
+                        $stmt = $pdo->prepare("
+                            SELECT u.id, u.first_name, u.last_name, u.email, a.account_number, a.balance 
+                            FROM users u 
+                            LEFT JOIN accounts a ON u.id = a.user_id AND a.status = 'active'
+                            WHERE a.account_number = ? OR u.email = ? OR CONCAT(u.first_name, ' ', u.last_name) = ?
+                            ORDER BY a.created_at DESC LIMIT 1
+                        ");
+                        $stmt->execute([$recipient_identifier, $recipient_identifier, $recipient_identifier]);
+                        $recipient = $stmt->fetch();
                         
-                        try {
-                            // Deduct amount from sender's balance
-                            $stmt = $pdo->prepare("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND status = 'active'");
-                            $stmt->execute([$amount, $_SESSION['user_id']]);
-                            
-                            // Create or update recipient's account
-                            if (!$recipient['account_number']) {
-                                // Create account for recipient
-                                $recipientAccountNumber = 'WB' . str_pad($recipient['id'], 8, '0', STR_PAD_LEFT);
-                                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                                $stmt->execute([$recipient['id'], $recipientAccountNumber]);
-                                $recipient['account_number'] = $recipientAccountNumber;
-                                $recipient['balance'] = 0.00;
-                            }
-                            
-                            // Add amount to recipient's balance
-                            $stmt = $pdo->prepare("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND status = 'active'");
-                            $stmt->execute([$amount, $recipient['id']]);
-                            
-                            // Generate reference IDs
-                            $senderReference = 'TRANSFER_OUT_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
-                            $recipientReference = 'TRANSFER_IN_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
-                            
-                            // Log sender's transaction (outgoing) - negative amount
-                            $stmt = $pdo->prepare("
-                                INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
-                                VALUES (?, 'transfer', ?, ?, 'completed', ?)
-                            ");
-                            $senderDescription = "Transfer to " . $recipient['first_name'] . " " . $recipient['last_name'] . " (Account #" . $recipient['account_number'] . ")";
-                            if (!empty($description)) {
-                                $senderDescription .= " - " . $description;
-                            }
-                            $stmt->execute([$_SESSION['user_id'], -$amount, $senderDescription, $senderReference]);
-                            
-                            // Log recipient's transaction (incoming) - positive amount
-                            $stmt = $pdo->prepare("
-                                INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
-                                VALUES (?, 'transfer', ?, ?, 'completed', ?)
-                            ");
-                            $recipientDescription = "Received ₱" . number_format($amount, 2) . " from " . $_SESSION['user_name'] . " (Account #" . $senderAccount['account_number'] . ")";
-                            if (!empty($description)) {
-                                $recipientDescription .= " - " . $description;
-                            }
-                            $stmt->execute([$recipient['id'], $amount, $recipientDescription, $recipientReference]);
-                            
-                            $pdo->commit();
-                            
-                            $_SESSION['message'] = 'Transfer of ₱' . number_format($amount, 2) . ' to ' . $recipient['first_name'] . ' ' . $recipient['last_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $senderReference . '</strong>';
-                            $_SESSION['messageType'] = 'success';
-                            
-                        } catch (Exception $e) {
-                            $pdo->rollback();
-                            $_SESSION['message'] = 'Transfer failed: ' . $e->getMessage() . '. Please try again.';
+                        if (!$recipient) {
+                            $_SESSION['message'] = 'Recipient not found. Please check the account number, email, or name.';
                             $_SESSION['messageType'] = 'error';
+                        } elseif ($recipient['id'] == $_SESSION['user_id']) {
+                            $_SESSION['message'] = 'You cannot transfer money to yourself.';
+                            $_SESSION['messageType'] = 'error';
+                        } else {
+                            // Start transaction
+                            $pdo->beginTransaction();
+                            
+                            try {
+                                // Deduct amount from sender's balance
+                                $stmt = $pdo->prepare("UPDATE accounts SET balance = balance - ? WHERE user_id = ? AND status = 'active'");
+                                $stmt->execute([$amount, $_SESSION['user_id']]);
+                                
+                                // Create or update recipient's account
+                                if (!$recipient['account_number']) {
+                                    // Create account for recipient
+                                    $recipientAccountNumber = 'WB' . str_pad($recipient['id'], 8, '0', STR_PAD_LEFT);
+                                    $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
+                                    $stmt->execute([$recipient['id'], $recipientAccountNumber]);
+                                    $recipient['account_number'] = $recipientAccountNumber;
+                                    $recipient['balance'] = 0.00;
+                                }
+                                
+                                // Add amount to recipient's balance
+                                $stmt = $pdo->prepare("UPDATE accounts SET balance = balance + ? WHERE user_id = ? AND status = 'active'");
+                                $stmt->execute([$amount, $recipient['id']]);
+                                
+                                // Generate reference IDs
+                                $senderReference = 'TRANSFER_OUT_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
+                                $recipientReference = 'TRANSFER_IN_' . str_pad(rand(100000, 999999), 8, '0', STR_PAD_LEFT);
+                                
+                                // Log sender's transaction (outgoing) - negative amount
+                                $stmt = $pdo->prepare("
+                                    INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
+                                    VALUES (?, 'transfer', ?, ?, 'completed', ?)
+                                ");
+                                $senderDescription = "Transfer to " . $recipient['first_name'] . " " . $recipient['last_name'] . " (Account #" . $recipient['account_number'] . ")";
+                                if (!empty($description)) {
+                                    $senderDescription .= " - " . $description;
+                                }
+                                $stmt->execute([$_SESSION['user_id'], -$amount, $senderDescription, $senderReference]);
+                                
+                                // Log recipient's transaction (incoming) - positive amount
+                                $stmt = $pdo->prepare("
+                                    INSERT INTO transactions (user_id, type, amount, description, status, reference_id) 
+                                    VALUES (?, 'transfer', ?, ?, 'completed', ?)
+                                ");
+                                $recipientDescription = "Received ₱" . number_format($amount, 2) . " from " . $_SESSION['user_name'] . " (Account #" . $senderAccount['account_number'] . ")";
+                                if (!empty($description)) {
+                                    $recipientDescription .= " - " . $description;
+                                }
+                                $stmt->execute([$recipient['id'], $amount, $recipientDescription, $recipientReference]);
+                                
+                                $pdo->commit();
+                                
+                                $_SESSION['message'] = 'Transfer of ₱' . number_format($amount, 2) . ' to ' . $recipient['first_name'] . ' ' . $recipient['last_name'] . ' has been processed successfully!<br>Reference ID: <strong>' . $senderReference . '</strong>';
+                                $_SESSION['messageType'] = 'success';
+                                
+                            } catch (Exception $e) {
+                                $pdo->rollback();
+                                $_SESSION['message'] = 'Transfer failed: ' . $e->getMessage() . '. Please try again.';
+                                $_SESSION['messageType'] = 'error';
+                            }
                         }
                     }
                 }
+            } catch (PDOException $e) {
+                $_SESSION['message'] = 'Transfer processing failed: ' . $e->getMessage() . '. Please try again.';
+                $_SESSION['messageType'] = 'error';
             }
-        } catch (PDOException $e) {
-            $_SESSION['message'] = 'Transfer processing failed: ' . $e->getMessage() . '. Please try again.';
-            $_SESSION['messageType'] = 'error';
         }
     }
     
@@ -207,6 +214,7 @@ include '../includes/navbar_user.php';
                 <h3 class="text-2xl font-bold text-gray-800 mb-6">Send Money</h3>
             
             <form method="POST" id="transferForm" class="space-y-6">
+                <?php echo csrf_field(); ?>
                 <!-- Hidden password field -->
                 <input type="hidden" name="password" id="passwordField">
                 

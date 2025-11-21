@@ -1,39 +1,52 @@
 <?php
-session_start();
+require_once '../includes/security.php';
+secure_session_start();
 require_once '../config/database.php';
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    
-    if (empty($username) || empty($password)) {
-        $error = 'Please fill in all fields.';
+    // Rate Limiting
+    if (!check_rate_limit('admin_login_attempt_' . $_SERVER['REMOTE_ADDR'], 5, 900)) {
+        $error = 'Too many login attempts. Please try again in 15 minutes.';
+    } 
+    // CSRF Verification
+    elseif (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid session. Please refresh and try again.';
     } else {
-        try {
-            // Check admin credentials in database
-            $stmt = $pdo->prepare("
-                SELECT id, username, password, first_name, last_name, email, role, status 
-                FROM admins 
-                WHERE username = ? AND status = 'active'
-            ");
-            $stmt->execute([$username]);
-            $admin = $stmt->fetch();
-            
-            if ($admin && password_verify($password, $admin['password'])) {
-                $_SESSION['admin_logged_in'] = true;
-                $_SESSION['admin_id'] = $admin['id'];
-                $_SESSION['admin_username'] = $admin['username'];
-                $_SESSION['admin_name'] = $admin['first_name'] . ' ' . $admin['last_name'];
-                $_SESSION['admin_role'] = $admin['role'];
-                header('Location: dashboard.php');
-                exit();
-            } else {
-                $error = 'Invalid admin credentials.';
+        $username = trim($_POST['username']);
+        $password = $_POST['password'];
+        
+        if (empty($username) || empty($password)) {
+            $error = 'Please fill in all fields.';
+        } else {
+            try {
+                // Check admin credentials in database
+                $stmt = $pdo->prepare("
+                    SELECT id, username, password, first_name, last_name, email, role, status 
+                    FROM admins 
+                    WHERE username = ? AND status = 'active'
+                ");
+                $stmt->execute([$username]);
+                $admin = $stmt->fetch();
+                
+                if ($admin && password_verify($password, $admin['password'])) {
+                    // Regenerate session ID to prevent fixation
+                    session_regenerate_id(true);
+                    
+                    $_SESSION['admin_logged_in'] = true;
+                    $_SESSION['admin_id'] = $admin['id'];
+                    $_SESSION['admin_username'] = $admin['username'];
+                    $_SESSION['admin_name'] = $admin['first_name'] . ' ' . $admin['last_name'];
+                    $_SESSION['admin_role'] = $admin['role'];
+                    header('Location: dashboard.php');
+                    exit();
+                } else {
+                    $error = 'Invalid admin credentials.';
+                }
+            } catch(PDOException $e) {
+                $error = 'Login failed. Please try again.';
             }
-        } catch(PDOException $e) {
-            $error = 'Login failed. Please try again.';
         }
     }
 }
@@ -59,6 +72,7 @@ include '../includes/header.php';
         <?php endif; ?>
         
         <form class="mt-8 space-y-6" method="POST">
+            <?php echo csrf_field(); ?>
             <div class="space-y-4">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700">Admin Username</label>

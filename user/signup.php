@@ -1,53 +1,59 @@
 <?php
-session_start();
+require_once '../includes/security.php';
+secure_session_start();
 require_once '../config/database.php';
 
 $error = '';
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $firstName = trim($_POST['first_name']);
-    $lastName = trim($_POST['last_name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $password = $_POST['password'];
-    $confirmPassword = $_POST['confirm_password'];
-    
-    // Validation
-    if (empty($firstName) || empty($lastName) || empty($email) || empty($password) || empty($confirmPassword)) {
-        $_SESSION['error'] = 'Please fill in all required fields.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $_SESSION['error'] = 'Please enter a valid email address.';
-    } elseif (strlen($password) < 6) {
-        $_SESSION['error'] = 'Password must be at least 6 characters long.';
-    } elseif ($password !== $confirmPassword) {
-        $_SESSION['error'] = 'Passwords do not match.';
+    // CSRF Verification
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $_SESSION['error'] = 'Invalid session. Please refresh and try again.';
     } else {
-        try {
-            // Check if email already exists
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            
-            if ($stmt->fetch()) {
-                $_SESSION['error'] = 'An account with this email already exists.';
-            } else {
-                // Hash password and insert user
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, phone, password) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$firstName, $lastName, $email, $phone, $hashedPassword]);
+        $firstName = trim($_POST['first_name']);
+        $lastName = trim($_POST['last_name']);
+        $email = trim($_POST['email']);
+        $phone = trim($_POST['phone']);
+        $password = trim($_POST['password']);
+        $confirmPassword = trim($_POST['confirm_password']);
+        
+        // Validation
+        if (empty($firstName) || empty($lastName) || empty($email) || empty($password) || empty($confirmPassword)) {
+            $_SESSION['error'] = 'Please fill in all required fields.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['error'] = 'Please enter a valid email address.';
+        } elseif (strlen($password) < 6) {
+            $_SESSION['error'] = 'Password must be at least 6 characters long.';
+        } elseif ($password !== $confirmPassword) {
+            $_SESSION['error'] = 'Passwords do not match.';
+        } else {
+            try {
+                // Check if email already exists
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+                $stmt->execute([$email]);
                 
-                // Get the new user's ID
-                $newUserId = $pdo->lastInsertId();
-                
-                // Create account for the new user
-                $accountNumber = 'WB' . str_pad($newUserId, 8, '0', STR_PAD_LEFT);
-                $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
-                $stmt->execute([$newUserId, $accountNumber]);
-                
-                $_SESSION['success'] = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="login.php" class="text-blue-600 hover:underline">sign in</a>.';
+                if ($stmt->fetch()) {
+                    $_SESSION['error'] = 'An account with this email already exists.';
+                } else {
+                    // Hash password and insert user
+                    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, phone, password) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$firstName, $lastName, $email, $phone, $hashedPassword]);
+                    
+                    // Get the new user's ID
+                    $newUserId = $pdo->lastInsertId();
+                    
+                    // Create account for the new user
+                    $accountNumber = 'WB' . str_pad($newUserId, 8, '0', STR_PAD_LEFT);
+                    $stmt = $pdo->prepare("INSERT INTO accounts (user_id, account_number, balance, status) VALUES (?, ?, 0.00, 'active')");
+                    $stmt->execute([$newUserId, $accountNumber]);
+                    
+                    $_SESSION['success'] = 'Account created successfully! Your account number is <strong>' . $accountNumber . '</strong><br>You can now <a href="login.php" class="text-blue-600 hover:underline">sign in</a>.';
+                }
+            } catch(PDOException $e) {
+                $_SESSION['error'] = 'Registration failed. Please try again.';
             }
-        } catch(PDOException $e) {
-            $_SESSION['error'] = 'Registration failed. Please try again.';
         }
     }
     
@@ -90,6 +96,7 @@ include '../includes/header.php';
         <?php endif; ?>
         
         <form class="mt-8 space-y-6" method="POST">
+            <?php echo csrf_field(); ?>
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>

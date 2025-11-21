@@ -1,32 +1,45 @@
 <?php
-session_start();
+require_once '../includes/security.php';
+secure_session_start();
 require_once '../config/database.php';
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    
-    if (empty($email) || empty($password)) {
-        $error = 'Please fill in all fields.';
+    // Rate Limiting
+    if (!check_rate_limit('login_attempt_' . $_SERVER['REMOTE_ADDR'], 5, 900)) {
+        $error = 'Too many login attempts. Please try again in 15 minutes.';
+    } 
+    // CSRF Verification
+    elseif (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid session. Please refresh and try again.';
     } else {
-        try {
-            $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
-            
-            if ($user && password_verify($password, $user['password'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
-                $_SESSION['user_email'] = $user['email'];
-                header('Location: dashboard.php');
-                exit();
-            } else {
-                $error = 'Invalid email or password.';
+        $email = trim($_POST['email']);
+        $password = trim($_POST['password']);
+        
+        if (empty($email) || empty($password)) {
+            $error = 'Please fill in all fields.';
+        } else {
+            try {
+                $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password FROM users WHERE email = ?");
+                $stmt->execute([$email]);
+                $user = $stmt->fetch();
+                
+                if ($user && password_verify($password, $user['password'])) {
+                    // Regenerate session ID to prevent fixation
+                    session_regenerate_id(true);
+                    
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+                    $_SESSION['user_email'] = $user['email'];
+                    header('Location: dashboard.php');
+                    exit();
+                } else {
+                    $error = 'Invalid email or password.';
+                }
+            } catch(PDOException $e) {
+                $error = 'Login failed. Please try again.';
             }
-        } catch(PDOException $e) {
-            $error = 'Login failed. Please try again.';
         }
     }
 }
@@ -52,6 +65,7 @@ include '../includes/header.php';
         <?php endif; ?>
         
         <form class="mt-8 space-y-6" method="POST">
+            <?php echo csrf_field(); ?>
             <div class="space-y-4">
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
