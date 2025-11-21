@@ -168,25 +168,33 @@ include '../includes/navbar_user.php';
 ?>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="mb-6">
-            <a href="dashboard.php" class="flex items-center text-blue-600 hover:text-blue-800 transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                Back to Dashboard
-            </a>
-        </div>
-        <!-- Message -->
-        <?php if ($message): ?>
-            <div class="mb-6 p-4 rounded-lg <?php echo $messageType === 'success' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'; ?>">
-                <?php if ($messageType === 'success'): ?>
-                    <?php echo $message; ?>
-                <?php else: ?>
-                    <?php echo htmlspecialchars($message); ?>
-                <?php endif; ?>
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Page Title -->
+            <div class="mb-8">
+                <div class="flex items-center">
+                    <a href="dashboard.php" class="text-blue-600 hover:text-blue-800 mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                    </a>
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">Account Settings</h2>
+                        <p class="text-gray-600">Manage your account information and preferences</p>
+                    </div>
+                </div>
             </div>
-        <?php endif; ?>
+
+            <!-- Message -->
+            <?php if ($message): ?>
+                <div class="mb-6 p-4 rounded-lg <?php echo $messageType === 'success' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'; ?>">
+                    <?php if ($messageType === 'success'): ?>
+                        <?php echo $message; ?>
+                    <?php else: ?>
+                        <?php echo htmlspecialchars($message); ?>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
         <?php if ($userInfo): ?>
             <!-- Account Information -->
@@ -369,5 +377,7 @@ include '../includes/navbar_user.php';
             }
         });
     </script>
+        </div>
+    </main>
 
 <?php include '../includes/footer.php'; ?>
