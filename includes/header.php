@@ -29,6 +29,16 @@ header("Pragma: no-cache");
             background-repeat: no-repeat;
         }
     </style>
+    <?php elseif (strpos($_SERVER['PHP_SELF'], '/admin/') !== false): ?>
+    <style>
+        body {
+            background-image: url('../assets/images/9517748.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+    </style>
     <?php endif; ?>
 </head>
 <body class="<?php echo isset($bodyClass) ? $bodyClass : 'bg-gray-50 min-h-screen flex flex-col'; ?>">
