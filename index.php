@@ -1,33 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WeBank - Your Trusted Banking Partner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
-    <!-- Header -->
-    <header class="bg-white shadow-md">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <h1 class="text-2xl font-bold text-blue-600">WeBank</h1>
-                </div>
-                <nav class="hidden md:flex space-x-6">
-                    <a href="#" class="text-gray-700 hover:text-blue-600 transition duration-300">Home</a>
-                    <a href="#" class="text-gray-700 hover:text-blue-600 transition duration-300">Services</a>
-                    <a href="#" class="text-gray-700 hover:text-blue-600 transition duration-300">About</a>
-                    <a href="#" class="text-gray-700 hover:text-blue-600 transition duration-300">Contact</a>
-                </nav>
-                <div class="flex space-x-4">
-                    <a href="user/login.php" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">
-                        Login
-                    </a>
-                </div>
-            </div>
-        </div>
-    </header>
+<?php
+$pageTitle = 'Home';
+include 'includes/header.php';
+include 'includes/navbar_landing.php';
+?>
 
     <!-- Main Content -->
     <main class="flex-grow">
@@ -86,46 +61,4 @@
         </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8">
-        <div class="container mx-auto px-4">
-            <div class="grid md:grid-cols-4 gap-8">
-                <div>
-                    <h4 class="text-xl font-bold mb-4">WeBank</h4>
-                    <p class="text-gray-400">Your trusted banking partner for secure and reliable financial services.</p>
-                </div>
-                <div>
-                    <h5 class="font-semibold mb-4">Services</h5>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition duration-300">Personal Banking</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Business Banking</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Loans</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Investment</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h5 class="font-semibold mb-4">Support</h5>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition duration-300">Help Center</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Contact Us</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">FAQ</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Security</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h5 class="font-semibold mb-4">Connect</h5>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition duration-300">Facebook</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Twitter</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">LinkedIn</a></li>
-                        <li><a href="#" class="hover:text-white transition duration-300">Instagram</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-                <p>&copy; 2024 WeBank. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

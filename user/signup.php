@@ -62,17 +62,12 @@ $success = $_SESSION['success'] ?? '';
 
 // Clear messages from session
 unset($_SESSION['error'], $_SESSION['success']);
+
+$pageTitle = 'Sign Up';
+$bodyClass = 'bg-gray-50 min-h-screen flex items-center justify-center py-12';
+include '../includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - WeBank</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center py-12">
     <div class="max-w-md w-full space-y-8 p-8">
         <div class="text-center">
             <h1 class="text-3xl font-bold text-blue-600 mb-2">WeBank</h1>
