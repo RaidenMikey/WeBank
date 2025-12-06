@@ -65,8 +65,6 @@ if ($user_id > 0) {
 } else {
     $error = 'Invalid user ID.';
 }
-?>
-
 $pageTitle = 'User Information';
 $bodyClass = 'bg-gray-50 flex h-screen overflow-hidden';
 include '../includes/header.php';

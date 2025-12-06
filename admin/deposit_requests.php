@@ -90,17 +90,17 @@ include '../includes/navbar_admin.php';
                     <div class="space-y-6">
                         <?php foreach ($pending_requests as $request): ?>
                             <div class="border border-gray-200 rounded-lg p-6">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h4 class="text-lg font-semibold text-gray-800">
+                                <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
+                                    <div class="flex-grow">
+                                        <h4 class="text-lg font-semibold text-gray-800 break-words">
                                             <?php echo htmlspecialchars($request['first_name'] . ' ' . $request['last_name']); ?>
                                         </h4>
-                                        <p class="text-sm text-gray-600"><?php echo htmlspecialchars($request['email']); ?></p>
-                                        <p class="text-sm font-mono text-gray-700"><strong>Reference:</strong> <?php echo htmlspecialchars($request['reference_number'] ?? 'N/A'); ?></p>
+                                        <p class="text-sm text-gray-600 break-all"><?php echo htmlspecialchars($request['email']); ?></p>
+                                        <p class="text-sm font-mono text-gray-700 mt-1"><strong>Reference:</strong> <?php echo htmlspecialchars($request['reference_number'] ?? 'N/A'); ?></p>
                                         <p class="text-sm text-gray-500">Requested: <?php echo date('M j, Y g:i A', strtotime($request['created_at'])); ?></p>
                                     </div>
-                                    <div class="text-right">
-                                        <div class="text-2xl font-bold text-green-600">
+                                    <div class="text-left sm:text-right flex-shrink-0 w-full sm:w-auto">
+                                        <div class="text-2xl font-bold text-green-600 whitespace-nowrap">
                                             ₱<?php echo number_format($request['amount'], 2); ?>
                                         </div>
                                     </div>
@@ -112,7 +112,7 @@ include '../includes/navbar_admin.php';
                                     </div>
                                 <?php endif; ?>
                                 
-                                <div class="flex justify-end">
+                                <div class="flex justify-center sm:justify-end">
                                     <a href="process_deposit.php?id=<?php echo $request['id']; ?>" 
                                        class="bg-green-600 text-white px-8 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">
                                         Process Deposit
@@ -133,7 +133,8 @@ include '../includes/navbar_admin.php';
                         <p class="text-gray-500">No processed requests yet</p>
                     </div>
                 <?php else: ?>
-                    <div class="overflow-x-auto">
+                    <!-- Desktop Table View -->
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -181,6 +182,41 @@ include '../includes/navbar_admin.php';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile Card View -->
+                    <div class="md:hidden space-y-4">
+                        <?php foreach ($processed_requests as $request): ?>
+                            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-gray-900">
+                                            <?php echo htmlspecialchars($request['first_name'] . ' ' . $request['last_name']); ?>
+                                        </h4>
+                                        <p class="text-xs text-gray-500"><?php echo htmlspecialchars($request['email']); ?></p>
+                                    </div>
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Processed
+                                    </span>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-2 text-sm mb-2">
+                                    <div>
+                                        <span class="text-gray-500 text-xs block">Amount</span>
+                                        <span class="font-semibold text-gray-900">₱<?php echo number_format($request['amount'], 2); ?></span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 text-xs block">Reference</span>
+                                        <span class="font-mono text-gray-900"><?php echo htmlspecialchars($request['reference_number'] ?? 'N/A'); ?></span>
+                                    </div>
+                                </div>
+
+                                <div class="text-xs text-gray-500 border-t border-gray-200 pt-2 mt-2 flex justify-between">
+                                    <span>By: <?php echo $request['admin_first_name'] ? htmlspecialchars($request['admin_first_name']) : 'System'; ?></span>
+                                    <span><?php echo date('M j, Y', strtotime($request['processed_at'])); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
