@@ -3,6 +3,12 @@ require_once '../includes/security.php';
 secure_session_start();
 require_once '../config/database.php';
 
+// Check if admin is already logged in
+if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+    header('Location: dashboard.php');
+    exit();
+}
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

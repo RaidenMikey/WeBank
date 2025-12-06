@@ -5,7 +5,7 @@ include 'includes/navbar_landing.php';
 ?>
 
     <!-- Main Content -->
-    <main class="flex-grow">
+    <main class="flex-grow pt-20">
         <!-- Hero Section -->
         <section id="home" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
             <div class="container mx-auto px-4 text-center">

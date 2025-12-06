@@ -1,5 +1,4 @@
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8 mt-auto">
+    <footer class="bg-gray-800 text-white py-8 mt-auto <?php echo strpos($_SERVER['PHP_SELF'], '/admin/') === false ? '' : ''; // Optional constraint ?>">
         <div class="container mx-auto px-4">
             <div class="grid md:grid-cols-4 gap-8">
                 <div>
@@ -39,6 +38,10 @@
             </div>
         </div>
     </footer>
+
+    <?php if (strpos($_SERVER['PHP_SELF'], '/admin/') !== false): ?>
+        </div> <!-- End Admin Main Wrapper -->
+    <?php endif; ?>
     
     <!-- Shared Scripts -->
     <script src="/WeBank/assets/js/main.js"></script>

@@ -46,6 +46,7 @@ try {
 }
 
 $pageTitle = 'Deposit Requests';
+$bodyClass = 'bg-gray-50 flex h-screen overflow-hidden';
 include '../includes/header.php';
 include '../includes/navbar_admin.php';
 ?>
